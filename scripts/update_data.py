@@ -623,6 +623,7 @@ def build_page_data(state: dict) -> dict:
                    'lastDist': last_a, 'lastDistDate': last_d, 'accrualFromMs': et_ms(iso_date(accrual_from))},
         'fees': {'ytd': fees},
         'priceSource': state.get('priceSource', 'Yahoo Finance'),
+        'bndStartClose': state['bnd_close']['values'][0],   # May 31, 2007: price-only vs total return on the page
     }
 
 
