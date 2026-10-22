@@ -458,6 +458,7 @@ dialog.info::backdrop { background: var(--scrim); }
         </tbody>
       </table>
     </div>
+    <p class="fee-line" id="tenkNote" hidden></p>
   </section>
 
   <section class="panel" id="time-machine" aria-labelledby="hTM">
@@ -477,6 +478,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <div class="cell static"><span class="lab" id="tmL7">$10,000 from May 2007, in VTI</span><span class="val ink" id="tmV7" data-max="30">&mdash;</span><span class="sub" id="tmS7"></span></div>
       <div class="cell static"><span class="lab" id="tmL8">Inflation</span><span class="val amber" id="tmV8" data-max="30">&mdash;</span><span class="sub" id="tmS8"></span></div>
     </div>
+    <p class="fee-line" id="tmNote" hidden></p>
     <div class="chart-box">
       <div class="chart-top">
         <h3 class="chart-title" id="chartTitle">Opportunity cost to all BND holders, by year</h3>
@@ -966,11 +968,15 @@ var BNDClock = (function () {
     var st = a === 'VOO' || a === 'VXUS' ? '*' : '';   // since-2007 figures include SPY (2007-2010) or VGTSX (2007-Jan 2011)
     var stW = b === 'SI' ? st : '';                      // only the since-2007 window reaches those years
     setText('heroLabel', heroLabel + stW);
-    $('vooNote').hidden = a !== 'VOO';
-    $('vxusNote').hidden = a !== 'VXUS';
+    // The footnote under the buttons belongs to the since-2007 view; the Growth of $10,000 table and the
+    // time machine always include since-2007 figures, so they carry their own copy.
+    $('vooNote').hidden = !(a === 'VOO' && b === 'SI');
+    $('vxusNote').hidden = !(a === 'VXUS' && b === 'SI');
+    var note = a === 'VOO' ? $('vooNote').textContent : a === 'VXUS' ? $('vxusNote').textContent : '';
+    ['tenkNote', 'tmNote'].forEach(function (id) { setText(id, note); $(id).hidden = !note; });
     setText('lPerTenK', 'Per $10,000 invested ' + WIN_AGO[b] + stW);
     setText('rowL_si', 'May 2007 (first month-end)' + st);
-    var siChip = document.querySelector('[data-basis="SI"]'); if (siChip) siChip.textContent = 'Since 2007' + st;
+    var siChip = document.querySelector('[data-basis="SI"]'); if (siChip) siChip.textContent = 'Since 2007' + stW;
 
     var gx = E.G[a][b], gb = E.G.BND[b], gp = gx - gb;
     setText('sRate', (gp >= 0 ? 'At the ' : 'BND gaining at the ') + BASIS[b] + ' gap: ' + AL.tick + ' ' + pct(gx, 2) + ' vs BND ' + pct(gb, 2) + ' a year');
