@@ -63,7 +63,7 @@ truthy('personal clock adds monthly contributions', p.put === 10000 + 100 * (E.N
 const proj = E.projYear('VTI', '10Y', E.YEAR + 1);
 truthy('projection is finite', Number.isFinite(proj.cum) && Number.isFinite(proj.oc) && Number.isFinite(proj.aumEnd));
 for (const key of ['asOf', 'asOfMs', 'n', 'ytdIdx', 'peakIdx']) truthy(`data has ${key}`, D[key] !== undefined && D[key] !== null);
-truthy('series lengths line up', ['BND', 'VTI', 'SPY', 'NVDA', 'TBILL', 'CPI'].every(k => D.r[k].length === D.n) && D.aum.length === D.n + 1 && D.shares.length === D.n + 1);
+truthy('series lengths line up', ['BND', 'VTI', 'VOO', 'NVDA', 'TBILL', 'CPI'].every(k => D.r[k].length === D.n) && D.aum.length === D.n + 1 && D.shares.length === D.n + 1);
 
 console.log(`${checks - fails}/${checks} checks passed (data through ${D.asOf}, ${D.n} months)`);
 process.exit(fails ? 1 : 0);

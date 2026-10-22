@@ -41,7 +41,7 @@ def weekdays(start, end):
 
 PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
-    'SPY': (620.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
+    'VOO': (570.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
 }
 TBILL_YIELD = 4.2   # flat 3-month Treasury yield in the made-up future
 # BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
@@ -95,7 +95,7 @@ def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, treasury_ok=True, c
         return {'rates': {'tbill': TBILL_YIELD, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0, 'date': max(daily),
                           'source': 'U.S. Treasury daily par yield curve'}, 'daily': daily}
     ud.fetch_treasury = treasury
-    ud.fetch_vti_expense = lambda: {'er': 0.03, 'asOf': '2026-04-28', 'source': 'Vanguard'}
+    ud.fetch_vanguard_expense = lambda t: {'er': 0.03, 'asOf': '2026-04-28', 'source': 'Vanguard'}
     ud.fetch_vanguard = lambda: vanguard or ({}, ['characteristic: investor.vanguard.com: HTTP Error 403: Forbidden'])
     import os
     os.environ['TIINGO_API_KEY'] = 'test-key'
