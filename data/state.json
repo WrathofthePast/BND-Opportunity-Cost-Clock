@@ -944,10 +944,10 @@
  "provisional": {
   "month": "2026-10",
   "asOf": "2026-10-21",
-  "BND": 12188,
-  "VTI": 13104,
+  "BND": 12129,
+  "VTI": 13120,
   "SPY": 13716,
-  "BIL": 2440,
+  "BIL": 2441,
   "bndClose": 70.75
  },
  "bnd_close": {
@@ -1609,15 +1609,15 @@
   ],
   [
    "2026-07-01",
-   0.24447
+   0.2445
   ],
   [
    "2026-08-03",
-   0.25155
+   0.2516
   ],
   [
    "2026-09-01",
-   0.252886
+   0.2529
   ],
   [
    "2026-10-01",
@@ -1643,11 +1643,11 @@
   "unrealizedDate": "2026-09-30",
   "expenseRatio": 0.03,
   "peerExpenseRatio": 0.53,
-  "high52": 75.23,
+  "high52": 75.17,
   "high52Date": "2026-02-27",
-  "low52": 69.652,
-  "low52Date": "2026-10-01",
-  "rangeBasis": "intraday prices"
+  "low52": 69.88,
+  "low52Date": "2026-10-05",
+  "rangeBasis": "closing prices"
  },
  "rates": {
   "tbill": 4.25,
@@ -1664,5 +1664,5 @@
   "priceHigh": 89.48,
   "priceHighDate": "2020-08-06"
  },
- "priceSource": "Yahoo Finance"
+ "priceSource": "Tiingo"
 }
