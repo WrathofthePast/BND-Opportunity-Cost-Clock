@@ -286,7 +286,7 @@ dialog.info::backdrop { background: var(--scrim); }
     <header class="top">
       <div class="brand">
         <h1>BND Opportunity Cost Clock</h1>
-        <p>What holders of Vanguard Total Bond Market ETF (BND) have given up compared with other places the same money could have been, counted in real time.</p>
+        <p>What holders of Vanguard Total Bond Market ETF (BND) have given up compared with other places the same money could have been, counted in real time. Every return here is a total return, with distributions and dividends reinvested, not just the change in share price.</p>
       </div>
       <div class="now">
         <div class="now-time" id="nowTime" aria-label="Current time, US Eastern">--</div>
@@ -334,7 +334,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="30">&mdash;</span><span class="sub" id="sPerShare"></span></button>
       <button type="button" class="cell" data-info="perTenK"><span class="lab">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="30">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
     </div>
-    <p class="hero-note" id="heroNote">Every month since BND launched, the clock compares what its holders' money earned with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
+    <p class="hero-note" id="heroNote">Every month since BND launched, the clock compares what its holders' money earned, distributions included, with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
   </section>
 
   <section class="panel" aria-labelledby="hPeriods">
@@ -478,6 +478,8 @@ dialog.info::backdrop { background: var(--scrim); }
     <div class="panel-head"><h2 id="hMethod">How the clock works</h2></div>
     <div class="method">
       <div>
+        <h3>Total returns, not share prices</h3>
+        <p id="mTotal">A fund’s share price leaves out the income it pays out. Every return on this page is a total return: distributions and dividends reinvested for BND, VTI, SPY and Nvidia, and interest for T-bills.</p>
         <h3>Monthly returns</h3>
         <p id="mPrices">Everything starts from monthly total returns since BND's first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and Nvidia (NVDA), 3-month Treasury bills with no fees, and the consumer price index for inflation.</p>
         <h3>Dollars at work</h3>
@@ -875,6 +877,10 @@ var BNDClock = (function () {
 
     setText('pTM', 'Step through BND’s history. Each year shows the clock as it stood on December 31; ' + YEAR +
       ' runs through ' + ASOF_SHORT + ', and ' + PROJ[0] + ' and ' + PROJ[1] + ' are projections at the pace set above.');
+    (function () {
+      var pr = F.price / D.bndStartClose - 1, tr = E.tenKAt('VTI', B(), 'si', D.asOfMs).b / 10000 - 1;
+      setText('mTotal', 'A fund’s share price leaves out the income it pays out. BND’s price went from ' + usd(D.bndStartClose, true) + ' at the end of May 2007 to ' + usd(F.price, true) + ' on ' + ASOF + ', a change of ' + pct(pr) + '. With its monthly distributions reinvested, the same shares returned ' + pct(tr) + '. Every return on this page is a total return like that: distributions and dividends reinvested for BND, VTI, SPY and Nvidia, and interest for T-bills.');
+    })();
     setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and Nvidia (NVDA), and the consumer price index for inflation. T-bills are 3-month Treasury bills bought with no fees, as at TreasuryDirect, and rolled over: each day earns 1/365 of the latest 3-month Treasury yield. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
     setText('mAssets', 'BND’s net assets come from Vanguard’s annual reports for each December since 2007 and from Vanguard’s fund page (latest: ' +
       words(F.tna * 1e6) + ' on ' + fmtDate(F.tnaDate) + '), filled in month by month from shares outstanding and the market price. The money at work in a month is the previous month-end’s assets plus half of that month’s new money.');
