@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&amp;display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Barlow:wght@400;500;600&amp;display=swap">
+<script>try { var t = localStorage.getItem("bnd-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
 <style>
 :root {
   /* Layout: a trading-floor LED board. A black field ruled into placards: one giant red counter up top,
@@ -37,6 +38,49 @@
   --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
 
   color-scheme: dark;
+}
+/* Light mode: the same board in ink on paper. Follows the device setting unless the visitor picks one. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --board: #f4f1ea;        /* paper */
+    --panel: #ffffff;
+    --rule: #ddd6c8;
+    --rule-hi: #b3aa99;
+    --ink: #1c1915;
+    --label: #575045;
+    --muted: #6b6457;
+    --red: #c0261a;          /* deep LED red */
+    --blue: #0a64a0;
+    --amber: #965800;
+    --red-glow: rgba(192, 38, 26, 0);
+    --blue-glow: rgba(10, 100, 160, 0);
+    --amber-glow: rgba(150, 88, 0, 0);
+    --wash: rgba(150, 88, 0, .08);
+    --dot: rgba(0, 0, 0, .06);
+    --shade: rgba(60, 50, 30, .07);
+    --scrim: rgba(28, 25, 21, .45);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --board: #f4f1ea;        /* paper */
+  --panel: #ffffff;
+  --rule: #ddd6c8;
+  --rule-hi: #b3aa99;
+  --ink: #1c1915;
+  --label: #575045;
+  --muted: #6b6457;
+  --red: #c0261a;          /* deep LED red */
+  --blue: #0a64a0;
+  --amber: #965800;
+  --red-glow: rgba(192, 38, 26, 0);
+  --blue-glow: rgba(10, 100, 160, 0);
+  --amber-glow: rgba(150, 88, 0, 0);
+  --wash: rgba(150, 88, 0, .08);
+  --dot: rgba(0, 0, 0, .06);
+  --shade: rgba(60, 50, 30, .07);
+  --scrim: rgba(28, 25, 21, .45);
+  color-scheme: light;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -85,6 +129,12 @@ button { font: inherit; color: inherit; }
 }
 .now-data { font: 500 13.5px/1.3 var(--font-label); color: var(--muted); letter-spacing: .03em; }
 .now-data.stale { color: var(--amber); }
+.theme-btn {
+  margin-top: 4px; padding: 6px 10px; min-height: 32px;
+  background: transparent; border: 1px solid var(--rule-hi); border-radius: 2px;
+  color: var(--label); font: 600 13px/1 var(--font-label); letter-spacing: .04em; cursor: pointer;
+}
+.theme-btn:hover { color: var(--ink); background: var(--wash); }
 
 .controls { display: flex; flex-wrap: wrap; gap: 18px 36px; align-items: flex-end; }
 .ctl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -293,6 +343,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <div class="now">
         <div class="now-time" id="nowTime" aria-label="Current time, US Eastern">--</div>
         <div class="now-data" id="dataNote">Loading the latest data</div>
+        <button type="button" class="theme-btn" id="themeBtn">Light mode</button>
       </div>
     </header>
 
@@ -1379,6 +1430,27 @@ var BNDClock = (function () {
   }
 
   // ---------- start ----------
+  // ---------- light / dark ----------
+  (function () {
+    var root = document.documentElement, btn = $('themeBtn'), mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    function current() { return root.getAttribute('data-theme') || (mq && mq.matches ? 'light' : 'dark'); }
+    function paint() {
+      var light = current() === 'light';
+      btn.textContent = light ? '\u263E Dark mode' : '\u2600 Light mode';
+      btn.setAttribute('aria-label', light ? 'Switch to dark mode' : 'Switch to light mode');
+      if (meta) meta.setAttribute('content', getComputedStyle(root).getPropertyValue('--board').trim() || '#000000');
+    }
+    btn.addEventListener('click', function () {
+      var next = current() === 'light' ? 'dark' : 'light';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('bnd-theme', next); } catch (e) { /* not remembered */ }
+      paint();
+    });
+    if (mq && mq.addEventListener) mq.addEventListener('change', paint);
+    paint();
+  })();
+
   buildStartOptions();
   buildYears();
   $('myAmount').value = String(state.my.amount);
