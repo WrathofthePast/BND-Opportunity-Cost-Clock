@@ -1,7 +1,7 @@
 # BND Opportunity Cost Clock
 
 A real-time clock, in the style of usdebtclock.org, showing what holders of the Vanguard Total Bond
-Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (SPY), 3-month T-bills and
+Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (SPY), Nvidia stock (NVDA), 3-month T-bills and
 inflation (CPI).
 
 **Live site:** https://delightfullygrateful.com
@@ -10,7 +10,7 @@ inflation (CPI).
 
 | What | When | Where it comes from |
 |---|---|---|
-| Prices and distributions for BND, VTI, SPY | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
+| Prices, distributions and splits for BND, VTI, SPY, NVDA | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
 | 3-month and 10-year Treasury yields (the 3-month yield is also the T-bill comparison) | Every weekday | U.S. Treasury daily par yield curve |
 | CPI | When the BLS publishes it (mid-month) | BLS API |
 | BND net assets, SEC yield, duration, unrealized gains | When Vanguard's site allows automated reads | Vanguard fund page (best effort) |
@@ -81,6 +81,8 @@ Or ask Claude to refresh them.
   calendar day earns 1/365 of the latest 3-month Treasury yield. (Until October 2026 the clock used
   the BIL ETF, whose fee and shorter maturity made it trail the bills by 0.2 to 0.35 points a year.
   `history/tbill_from_treasury.py` rebuilds the history from the Treasury's files.)
+- Nvidia's returns include its dividends, reinvested, and its stock splits (3-for-2 in 2007,
+  4-for-1 in 2021, 10-for-1 in 2024). History to September 2026 is from Yahoo Finance daily closes.
 - BND, VTI and SPY returns are after their funds' expense ratios, since fees come out of the
   funds' assets and so out of their prices.
 - Opportunity cost for a month = dollars at work in BND × (alternative's return − BND's return),

@@ -4,7 +4,7 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI and SPY from Tiingo
+  2. Fetches the latest daily prices and distributions for BND, VTI, SPY and NVDA from Tiingo
      (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
      (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
      TreasuryDirect), and fund facts from Vanguard (best effort).
@@ -40,14 +40,14 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'SPY')        # ETFs priced from Tiingo / Yahoo
+TICKERS = ('BND', 'VTI', 'SPY', 'NVDA')   # priced from Tiingo / Yahoo
 SERIES = TICKERS + ('TBILL',)           # monthly return series kept in state.json
-ALTS = ('VTI', 'SPY', 'TBILL', 'CPI')
+ALTS = ('VTI', 'SPY', 'NVDA', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'SPY': (-0.40, 0.40)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'SPY': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 
@@ -170,14 +170,14 @@ def fetch_yahoo(ticker: str, start: dt.date, end: dt.date) -> list[dict]:
     divs: dict[str, float] = {}
     for ev in (events.get('dividends') or {}).values():
         divs[day(ev['date'])] = divs.get(day(ev['date']), 0.0) + float(ev['amount'])
-    splits = {day(ev['date']): float(ev['numerator']) / float(ev['denominator'])
-              for ev in (events.get('splits') or {}).values()}
+    # Yahoo's closes and dividends are already adjusted for splits, so no split factor is applied
+    # (Tiingo's are not, and come with the split factor on the split day).
     rows = []
     for ts, c in zip(res['timestamp'], res['indicators']['quote'][0]['close']):
         if c is None:
             continue
         d = day(ts)
-        rows.append({'date': d, 'close': float(c), 'div': divs.get(d, 0.0), 'split': splits.get(d, 1.0)})
+        rows.append({'date': d, 'close': float(c), 'div': divs.get(d, 0.0), 'split': 1.0})
     return rows
 
 
