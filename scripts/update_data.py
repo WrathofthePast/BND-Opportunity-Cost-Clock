@@ -4,7 +4,7 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI, SPY and NVDA from Tiingo
+  2. Fetches the latest daily prices and distributions for BND, VTI, VOO and NVDA from Tiingo
      (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
      (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
      TreasuryDirect), and fund facts from Vanguard (best effort).
@@ -40,14 +40,14 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'SPY', 'NVDA')   # priced from Tiingo / Yahoo
+TICKERS = ('BND', 'VTI', 'VOO', 'NVDA')   # priced from Tiingo / Yahoo
 SERIES = TICKERS + ('TBILL',)           # monthly return series kept in state.json
-ALTS = ('VTI', 'SPY', 'NVDA', 'TBILL', 'CPI')
+ALTS = ('VTI', 'VOO', 'NVDA', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'SPY': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 
@@ -279,9 +279,9 @@ def tbill_factor(daily: dict, first: dt.date, last: dt.date) -> float:
     return f
 
 
-def fetch_vti_expense() -> dict:
-    hdr = {'Accept': 'application/json', 'Referer': 'https://investor.vanguard.com/investment-products/etfs/profile/vti'}
-    ex = json.loads(http_get('https://investor.vanguard.com/vmf/api/VTI/expense', hdr, retries=1))
+def fetch_vanguard_expense(ticker: str) -> dict:
+    hdr = {'Accept': 'application/json', 'Referer': f'https://investor.vanguard.com/investment-products/etfs/profile/{ticker.lower()}'}
+    ex = json.loads(http_get(f'https://investor.vanguard.com/vmf/api/{ticker}/expense', hdr, retries=1))
     return {'er': float(ex['expenseRatio']), 'asOf': ex['expenseRatioAsOfDate'][:10], 'source': 'Vanguard'}
 
 
@@ -503,10 +503,11 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             nav = state['bnd_close']['values'][month_diff('2007-05', m)]
             anchors.append([m, vg['tna'], nav])
             notes.append(f'Added Vanguard net assets for {m}: ${vg["tna"] / 1000:.1f} billion')
-    try:   # VTI's expense ratio, from the same Vanguard API (SPY's is kept by hand: State Street has no open API)
-        state['altFees']['VTI'] = fetch_vti_expense()
-    except Exception as e:
-        vg_errors.append(f'VTI expense: {e}')
+    for t in ('VTI', 'VOO'):   # their expense ratios, from the same Vanguard API (SPY's, for 2007-2010, is fixed)
+        try:
+            state['altFees'][t] = fetch_vanguard_expense(t)
+        except Exception as e:
+            vg_errors.append(f'{t} expense: {e}')
     srcs['vanguard'] = {'ok': not vg_errors, 'fields': sorted(vg), 'error': '; '.join(vg_errors)[:300] or None}
     if vg_errors:
         notes.append('Vanguard fund facts not fully refreshed (kept the last values with their dates)')
