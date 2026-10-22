@@ -4,7 +4,7 @@ A real-time clock, in the style of usdebtclock.org, showing what holders of the 
 Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (SPY), T-bills (BIL) and
 inflation (CPI).
 
-**Live site:** https://bnd-opportunity-cost-clock.bobdwhitejr.workers.dev
+**Live site:** https://delightfullygrateful.com
 
 ## How it stays current
 
