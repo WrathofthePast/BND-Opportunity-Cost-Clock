@@ -279,6 +279,12 @@ def tbill_factor(daily: dict, first: dt.date, last: dt.date) -> float:
     return f
 
 
+def fetch_vti_expense() -> dict:
+    hdr = {'Accept': 'application/json', 'Referer': 'https://investor.vanguard.com/investment-products/etfs/profile/vti'}
+    ex = json.loads(http_get('https://investor.vanguard.com/vmf/api/VTI/expense', hdr, retries=1))
+    return {'er': float(ex['expenseRatio']), 'asOf': ex['expenseRatioAsOfDate'][:10], 'source': 'Vanguard'}
+
+
 def parse_money_millions(text: str) -> float:
     """'$161.4 billion' -> 161400.0 (millions)."""
     parts = text.replace('$', '').replace(',', '').split()
@@ -497,6 +503,10 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             nav = state['bnd_close']['values'][month_diff('2007-05', m)]
             anchors.append([m, vg['tna'], nav])
             notes.append(f'Added Vanguard net assets for {m}: ${vg["tna"] / 1000:.1f} billion')
+    try:   # VTI's expense ratio, from the same Vanguard API (SPY's is kept by hand: State Street has no open API)
+        state['altFees']['VTI'] = fetch_vti_expense()
+    except Exception as e:
+        vg_errors.append(f'VTI expense: {e}')
     srcs['vanguard'] = {'ok': not vg_errors, 'fields': sorted(vg), 'error': '; '.join(vg_errors)[:300] or None}
     if vg_errors:
         notes.append('Vanguard fund facts not fully refreshed (kept the last values with their dates)')
@@ -623,7 +633,8 @@ def build_page_data(state: dict) -> dict:
                    'lastDist': last_a, 'lastDistDate': last_d, 'accrualFromMs': et_ms(iso_date(accrual_from))},
         'fees': {'ytd': fees},
         'priceSource': state.get('priceSource', 'Yahoo Finance'),
-        'bndStartClose': state['bnd_close']['values'][0],   # May 31, 2007: price-only vs total return on the page
+        'bndStartClose': state['bnd_close']['values'][0],
+        'altFees': state['altFees'],   # expense ratios (% a year) of the funds BND is compared with   # May 31, 2007: price-only vs total return on the page
     }
 
 

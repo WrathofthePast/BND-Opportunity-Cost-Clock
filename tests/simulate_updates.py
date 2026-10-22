@@ -95,6 +95,7 @@ def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, treasury_ok=True, c
         return {'rates': {'tbill': TBILL_YIELD, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0, 'date': max(daily),
                           'source': 'U.S. Treasury daily par yield curve'}, 'daily': daily}
     ud.fetch_treasury = treasury
+    ud.fetch_vti_expense = lambda: {'er': 0.03, 'asOf': '2026-04-28', 'source': 'Vanguard'}
     ud.fetch_vanguard = lambda: vanguard or ({}, ['characteristic: investor.vanguard.com: HTTP Error 403: Forbidden'])
     import os
     os.environ['TIINGO_API_KEY'] = 'test-key'
