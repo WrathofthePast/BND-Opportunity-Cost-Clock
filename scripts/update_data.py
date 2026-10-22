@@ -488,9 +488,10 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             state['cpi'][k] = v
             if k in state.get('cpi_interpolated', []):
                 state['cpi_interpolated'].remove(k)
-        srcs['cpi'] = {'ok': True, 'through': max(cpi)}
+        srcs['cpi'] = {'ok': True, 'through': max(cpi), 'withKey': bool(os.environ.get('BLS_API_KEY', '').strip())}
     except Exception as e:
-        srcs['cpi'] = {'ok': False, 'error': str(e)[:200], 'through': max(state['cpi'])}
+        srcs['cpi'] = {'ok': False, 'error': str(e)[:200], 'through': max(state['cpi']),
+                       'withKey': bool(os.environ.get('BLS_API_KEY', '').strip())}
         notes.append('CPI not refreshed: ' + str(e)[:200])
 
     # 3-month T-bills and TIPS: from the Treasury's daily yields (kept in state so a Treasury outage only delays)
