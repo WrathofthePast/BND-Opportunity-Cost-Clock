@@ -1,10 +1,13 @@
-// Cloudflare Worker that serves the clock as a static site.
+// Cloudflare Worker that serves the clock as a static site at delightfullygrateful.com.
 // Cloudflare rebuilds it on every push to main (deploy command: npx wrangler deploy).
 {
   "name": "bnd-opportunity-cost-clock",
   "compatibility_date": "2025-09-01",
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
+  "routes": [
+    { "pattern": "delightfullygrateful.com", "custom_domain": true }
+  ],
   "assets": {
     "directory": "./public"
   }
