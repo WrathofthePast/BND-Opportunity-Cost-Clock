@@ -100,9 +100,9 @@ def main():
     fb.setupCharacterMap(cmap)
     fb.setupGlyf(glyphs)
     fb.setupHorizontalMetrics(metrics)
-    fb.setupHorizontalHeader(ascent=850, descent=-150)
+    fb.setupHorizontalHeader(ascent=900, descent=-100)   # puts every dot on a 0.1em grid from the top of the line
     fb.setupNameTable({'familyName': 'Ticker 5x7', 'styleName': 'Regular'})
-    fb.setupOS2(sTypoAscender=850, sTypoDescender=-150, usWinAscent=850, usWinDescent=150,
+    fb.setupOS2(sTypoAscender=900, sTypoDescender=-100, usWinAscent=900, usWinDescent=100,
                 sCapHeight=700, sxHeight=500, achVendID='NONE')
     fb.setupPost()
     OUT.parent.mkdir(parents=True, exist_ok=True)
