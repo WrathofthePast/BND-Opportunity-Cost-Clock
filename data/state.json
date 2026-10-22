@@ -1181,9 +1181,9 @@
   "BND": 12129,
   "VTI": 13120,
   "SPY": 13716,
+  "NVDA": -28067,
   "TBILL": 2440,
-  "bndClose": 70.75,
-  "NVDA": -28067
+  "bndClose": 70.75
  },
  "bnd_close": {
   "start": "2007-05",
