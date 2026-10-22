@@ -104,7 +104,7 @@ button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .wrap {
-  max-width: 1240px;
+  max-width: 1840px;
   margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -367,7 +367,7 @@ dialog.info::backdrop { background: var(--scrim); }
         </div>
       </div>
       <div class="ctl">
-        <span class="ctl-label" id="lblBasis">Tick at the return gap of the</span>
+        <span class="ctl-label" id="lblBasis">Period</span>
         <div class="chips" role="radiogroup" aria-labelledby="lblBasis" id="basisGroup">
           <button type="button" class="chip" role="radio" data-basis="1Y">Last year</button>
           <button type="button" class="chip" role="radio" data-basis="3Y">3 years</button>
@@ -389,7 +389,7 @@ dialog.info::backdrop { background: var(--scrim); }
   <section class="hero" aria-label="Headline clock">
     <button type="button" class="hero-main" data-info="total">
       <span class="hero-label" id="heroLabel">Opportunity cost to all BND holders since 2007, vs. US stocks (VTI)</span>
-      <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="104" data-min="20">&mdash;</span></span>
+      <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="180" data-min="20">&mdash;</span></span>
     </button>
     <div class="board cols-5" id="heroStats">
       <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="30">&mdash;</span><span class="sub" id="sRate"></span></button>
@@ -398,7 +398,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="30">&mdash;</span><span class="sub" id="sPerShare"></span></button>
       <button type="button" class="cell" data-info="perTenK"><span class="lab" id="lPerTenK">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="30">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
     </div>
-    <p class="hero-note" id="heroNote">Every month since BND launched, the clock compares what its holders' money earned, distributions included, with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
+    <p class="hero-note" id="heroNote">Every month in the period you pick, the clock compares what its holders' money earned, distributions included, with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
   </section>
 
   <section class="panel" aria-labelledby="hPeriods">
@@ -617,7 +617,7 @@ var BNDClock = (function () {
       G[k] = {};
       for (var b in WIN) G[k][b] = Math.pow(prod(f[k], NF - WIN[b], NF), 12 / WIN[b]) - 1;
     }
-    var PERIOD = { si: 0, y10: N - 120, peak: D.peakIdx, y5: N - 60, m12: N - 12, ytd: D.ytdIdx };
+    var PERIOD = { si: 0, y10: N - 120, peak: D.peakIdx, y5: N - 60, y3: N - 36, m12: N - 12, ytd: D.ytdIdx };
 
     var YEAR = +D.asOf.slice(0, 4);
     var T0 = D.asOfMs, YE = Date.UTC(YEAR + 1, 0, 1, 5, 0, 0);   // midnight ET, Jan 1 of next year
@@ -717,6 +717,11 @@ var BNDClock = (function () {
     CPI: { tick: 'CPI', long: 'inflation (CPI)', vs: 'inflation (CPI)', inA: 'growing with inflation' }
   };
   var BASIS = { '1Y': '1-year', '3Y': '3-year', '5Y': '5-year', '10Y': '10-year', 'SI': 'since-2007' };
+  // The period buttons set both the window the big counter adds up and the return gap it ticks at.
+  var WINDOW = { '1Y': 'm12', '3Y': 'y3', '5Y': 'y5', '10Y': 'y10', 'SI': 'si' };
+  var WIN_TXT = { '1Y': 'over the last 12 months', '3Y': 'over the last 3 years', '5Y': 'over the last 5 years', '10Y': 'over the last 10 years', 'SI': 'since 2007' };
+  var WIN_AGO = { '1Y': '12 months ago', '3Y': '3 years ago', '5Y': '5 years ago', '10Y': '10 years ago', 'SI': 'in May 2007' };
+  function WP() { return WINDOW[state.basis]; }   // the window key for the selected period
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -747,7 +752,7 @@ var BNDClock = (function () {
   };
 
   var DEFAULT_MY = { amount: 10000, start: ix(2021, 1), monthly: 0, custom: false };
-  var state = { alt: 'VTI', basis: '10Y', year: YEAR, my: { amount: 10000, start: ix(2021, 1), monthly: 0, custom: false } };
+  var state = { alt: 'VTI', basis: 'SI', year: YEAR, my: { amount: 10000, start: ix(2021, 1), monthly: 0, custom: false } };
   try {
     var saved = JSON.parse(localStorage.getItem('bnd-clock-v1') || 'null');
     if (saved) {
@@ -853,12 +858,12 @@ var BNDClock = (function () {
   // ---------- registrations ----------
   function A() { return state.alt; }
   function B() { return state.basis; }
-  reg('vTotal', function (t) { return E.ocAt(A(), B(), 'si', t); }, function (v) { return usd(v); }, tone);
+  reg('vTotal', function (t) { return E.ocAt(A(), B(), WP(), t); }, function (v) { return usd(v); }, tone);
   reg('vRateSec', function (t) { return E.ratePerSec(A(), B(), t); }, function (v) { return Math.abs(v) < 100 ? usd(v, true) : usd(v); }, tone);
   reg('vRateDay', function (t) { return E.ratePerSec(A(), B(), t) * 86400; }, compact, tone);
   reg('vRateYear', function (t) { return E.ratePerSec(A(), B(), t) * SPYR; }, compact, tone);
-  reg('vPerShare', function (t) { return E.ocAt(A(), B(), 'si', t) / E.sharesAt(t); }, function (v) { return usd(v, true); }, tone);
-  reg('vPerTenK', function (t) { return E.tenKAt(A(), B(), 'si', t).diff; }, function (v) { return usd(v, true); }, tone);
+  reg('vPerShare', function (t) { return E.ocAt(A(), B(), WP(), t) / E.sharesAt(t); }, function (v) { return usd(v, true); }, tone);
+  reg('vPerTenK', function (t) { return E.tenKAt(A(), B(), WP(), t).diff; }, function (v) { return usd(v, true); }, tone);
   ['ytd', 'm12', 'peak', 'y5', 'y10'].forEach(function (p) {
     reg('vP_' + p, function (t) { return E.ocAt(A(), B(), p, t); }, function (v) { return usd(v); }, tone);
   });
@@ -968,15 +973,16 @@ var BNDClock = (function () {
   // ---------- labels that depend on the settings ----------
   function renderLabels() {
     var a = state.alt, b = state.basis, AL = ALT[a], t = Date.now();
-    var total = E.ocAt(a, b, 'si', t);
+    var total = E.ocAt(a, b, WP(), t), W = WIN_TXT[b];
     var heroLabel;
-    if (a === 'CPI') heroLabel = total >= 0 ? 'Buying power all BND holders have lost to inflation since 2007' : 'How far all BND holders have beaten inflation since 2007 (negative = ahead)';
-    else heroLabel = total >= 0 ? 'Opportunity cost to all BND holders since 2007, vs. ' + AL.vs : 'All BND holders since 2007 vs. ' + AL.vs + ' (negative = BND ahead)';
+    if (a === 'CPI') heroLabel = total >= 0 ? 'Buying power all BND holders have lost to inflation ' + W : 'How far all BND holders have beaten inflation ' + W + ' (negative = ahead)';
+    else heroLabel = total >= 0 ? 'Opportunity cost to all BND holders ' + W + ', vs. ' + AL.vs : 'All BND holders ' + W + ' vs. ' + AL.vs + ' (negative = BND ahead)';
     var st = a === 'VOO' || a === 'VXUS' ? '*' : '';   // since-2007 figures include SPY (2007-2010) or VGTSX (2007-Jan 2011)
-    setText('heroLabel', heroLabel + st);
+    var stW = b === 'SI' ? st : '';                      // only the since-2007 window reaches those years
+    setText('heroLabel', heroLabel + stW);
     $('vooNote').hidden = a !== 'VOO';
     $('vxusNote').hidden = a !== 'VXUS';
-    setText('lPerTenK', 'Per $10,000 invested in May 2007' + st);
+    setText('lPerTenK', 'Per $10,000 invested ' + WIN_AGO[b] + stW);
     setText('rowL_si', 'May 2007 (first month-end)' + st);
     var siChip = document.querySelector('[data-basis="SI"]'); if (siChip) siChip.textContent = 'Since 2007' + st;
 
@@ -985,7 +991,7 @@ var BNDClock = (function () {
     setText('sRateDay', 'On ' + words(E.aumAt(t)) + ' of assets');
     setText('sRateYear', 'Gap of ' + (gp >= 0 ? '' : MINUS) + Math.abs(gp * 100).toFixed(2) + ' points a year');
     setText('sPerShare', 'Total ÷ ' + (E.sharesAt(t) / 1e9).toFixed(2) + ' billion shares');
-    var tk = E.tenKAt(a, b, 'si', t);
+    var tk = E.tenKAt(a, b, WP(), t);
     setText('sPerTenK', compact(tk.b) + ' in BND vs ' + compact(tk.x) + ' ' + AL.inA);
 
     ['ytd', 'm12', 'peak', 'y5', 'y10'].forEach(function (p) {
@@ -1225,18 +1231,20 @@ var BNDClock = (function () {
   }
   function infoFor(id, t) {
     var a = state.alt, b = state.basis, AL = ALT[a], gx = E.G[a][b], gb = E.G.BND[b];
-    var total = E.ocAt(a, b, 'si', t), base = E.OC0[a].si, rate = E.ratePerSec(a, b, t), aum = E.aumAt(t);
-    var tk = E.tenKAt(a, b, 'si', t), tk0 = E.tenKAt(a, b, 'si', T0);
+    var total = E.ocAt(a, b, WP(), t), base = E.OC0[a][WP()], rate = E.ratePerSec(a, b, t), aum = E.aumAt(t);
+    var tk = E.tenKAt(a, b, WP(), t), tk0 = E.tenKAt(a, b, 'si', T0), W = WIN_TXT[b];
+    var every = b === 'SI' ? 'every month since June 2007' : 'every month ' + W + ' (since the start of ' + monthName(E.PERIOD[WP()]) + ')';
     var paceText = 'At the ' + BASIS[b] + ' gap (' + AL.tick + ' ' + pct(gx, 2) + ' a year vs BND ' + pct(gb, 2) + ')';
     var flowMonth = E.FLOW_SEC * SPYR / 12;
     var cpiPct = D.cpi.yoy * 100, priceYtd = F.priceYtd;
     switch (id) {
       case 'total': {
         var paras = [];
-        if (a === 'CPI') paras.push('How far BND’s returns fell short of inflation, in dollars of buying power, adding up every month since June 2007 for all the money in the fund.');
-        else paras.push('If, every month since June 2007, the money in BND had been in ' + AL.long + ' instead, its holders would have ended up with this much more.');
+        if (a === 'CPI') paras.push('How far BND’s returns fell short of inflation, in dollars of buying power, adding up ' + every + ' for all the money in the fund.');
+        else paras.push('If, ' + every + ', the money in BND had been in ' + AL.long + ' instead, its holders would have ended up with this much more.');
         paras.push('Through the ' + ASOF + ' close the total is ' + usd(base) + '. Since then the clock ' + (rate >= 0 ? 'adds ' : 'subtracts ') + usd(Math.abs(rate), Math.abs(rate) < 100) + ' a second. ' + paceText + ', applied to today’s estimated ' + words(aum) + ' of assets.');
-        if (a === 'TBILL') paras.push('A single dollar put into BND in 2007 is ' + (tk0.b >= tk0.x ? 'still ahead of' : 'behind') + ' T-bills: $10,000 grew to ' + usd(tk0.b) + ' in BND vs ' + usd(tk0.x) + ' in 3-month T-bills. The fund-wide total can differ because most of BND’s money arrived after 2020, when T-bills often paid more.');
+        if (b !== 'SI') { /* the notes below are about the full history */ }
+        else if (a === 'TBILL') paras.push('A single dollar put into BND in 2007 is ' + (tk0.b >= tk0.x ? 'still ahead of' : 'behind') + ' T-bills: $10,000 grew to ' + usd(tk0.b) + ' in BND vs ' + usd(tk0.x) + ' in 3-month T-bills. The fund-wide total can differ because most of BND’s money arrived after 2020, when T-bills often paid more.');
         else if (a === 'CPI') paras.push('$10,000 put into BND in 2007 ' + (tk0.b >= tk0.x ? 'stayed ahead of' : 'fell behind') + ' inflation (' + usd(tk0.b) + ' vs the ' + usd(tk0.x) + ' needed to keep up). Most of BND’s assets arrived later; the fund-wide total lost buying power in ' + listYears(costYearsSince(2020)) + '.');
         else paras.push('BND did better than ' + AL.tick + ' in ' + listYears(betterYears()) + ', and the total nets those years out. In 2008 alone BND holders came out ' + words(-yearOC(2008)) + ' ahead.');
         return { title: $('heroLabel').textContent, value: usd(total), tone: tone(total), paras: paras,
@@ -1253,12 +1261,12 @@ var BNDClock = (function () {
       case 'perShare': {
         var shs = E.sharesAt(t);
         return { title: 'Per BND share outstanding', value: usd(total / shs, true), tone: tone(total),
-          paras: ['The since-2007 total divided by BND’s estimated ' + (shs / 1e9).toFixed(3) + ' billion shares. Like a debt clock’s debt per citizen, it spreads a total built up over many years across today’s holders. A share bought recently did not lose this much.'],
-          formula: 'Opportunity cost since 2007 ÷ shares outstanding (' + (D.pace.sharesTo / 1e9).toFixed(2) + ' billion on ' + monthEnd(D.pace.to) + ', growing about ' + Math.round(D.pace.perMonth / 1e6) + ' million a month).' };
+          paras: ['The total ' + W + ' divided by BND’s estimated ' + (shs / 1e9).toFixed(3) + ' billion shares. Like a debt clock’s debt per citizen, it spreads a total built up over many years across today’s holders. A share bought recently did not lose this much.'],
+          formula: 'Opportunity cost ' + W + ' ÷ shares outstanding (' + (D.pace.sharesTo / 1e9).toFixed(2) + ' billion on ' + monthEnd(D.pace.to) + ', growing about ' + Math.round(D.pace.perMonth / 1e6) + ' million a month).' };
       }
       case 'perTenK':
-        return { title: '$10,000 invested in May 2007', value: usd(tk.diff, true), tone: tone(tk.diff),
-          paras: ['$10,000 put into BND at the May 31, 2007 close, with every distribution reinvested, is worth ' + usd(tk.b, true) + ' now. The same $10,000 ' + (a === 'CPI' ? 'would need to be ' + usd(tk.x, true) + ' to keep up with inflation.' : AL.inA + ' would be worth ' + usd(tk.x, true) + '.'),
+        return { title: '$10,000 invested ' + WIN_AGO[b], value: usd(tk.diff, true), tone: tone(tk.diff),
+          paras: ['$10,000 put into BND ' + (b === 'SI' ? 'at the May 31, 2007 close' : 'at the start of ' + monthName(E.PERIOD[WP()])) + ', with every distribution reinvested, is worth ' + usd(tk.b, true) + ' now. The same $10,000 ' + (a === 'CPI' ? 'would need to be ' + usd(tk.x, true) + ' to keep up with inflation.' : AL.inA + ' would be worth ' + usd(tk.x, true) + '.'),
             'This is the classic comparison of one lump sum held throughout. Unlike the headline, it does not depend on when money flowed into BND.'],
           formula: '$10,000 × product of (1 + monthly total return), ' + AL.tick + ' minus BND. After the ' + ASOF_SHORT + ' close both grow at their ' + BASIS[b] + ' annual rates.' };
       case 'aum':

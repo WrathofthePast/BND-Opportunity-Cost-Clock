@@ -734,7 +734,7 @@ def expected_values(page: dict) -> dict:
     gap = {a: [inv[i] * (f[a][i] - f['BND'][i]) for i in range(n)] for a in ALTS}
     win = {'1Y': 12, '3Y': 36, '5Y': 60, '10Y': 120, 'SI': nf}
     G = {k: {b: prod(f[k][nf - w:nf]) ** (12 / w) - 1 for b, w in win.items()} for k in f}
-    periods = {'si': 0, 'y10': n - 120, 'peak': page['peakIdx'], 'y5': n - 60, 'm12': n - 12, 'ytd': page['ytdIdx']}
+    periods = {'si': 0, 'y10': n - 120, 'peak': page['peakIdx'], 'y5': n - 60, 'y3': n - 36, 'm12': n - 12, 'ytd': page['ytdIdx']}
     y_last = int(page['asOf'][:4])
     out = {'G': G, 'oc': {}, 'tenK': {}, 'years': {}, 'ratePerSec': {},
            'aum0': aum[n], 'shares0': sh[n]}
