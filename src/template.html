@@ -43,46 +43,46 @@
 /* Light mode: the same board in ink on paper. Follows the device setting unless the visitor picks one. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    /* Light: ticker tape and ledger paper, black and red ink, green for gains. */
-    --board: #f6f1e3;        /* paper */
-    --panel: #fffcf3;
-    --rule: #e0d8c3;
-    --rule-hi: #b9ad92;
-    --ink: #161310;          /* black ink */
-    --label: #4f4739;
-    --muted: #665d4d;
+    /* Light: off-white ticker-tape paper, black ink, red and green for meaning, navy for controls. */
+    --board: #f7f7f4;        /* off-white paper */
+    --panel: #ffffff;
+    --rule: #dcdcd6;
+    --rule-hi: #a8a9a3;
+    --ink: #111214;          /* black ink */
+    --label: #43464b;
+    --muted: #5b5f65;
     --red: #b3241c;          /* red ink: in the red */
     --green: #1c6a34;        /* ledger green */
-    --amber: #8f5600;
+    --amber: #1d3c6e;        /* navy: controls and readings */
     --red-glow: rgba(179, 36, 28, 0);
     --green-glow: rgba(28, 106, 52, 0);
-    --amber-glow: rgba(143, 86, 0, 0);
-    --wash: rgba(143, 86, 0, .08);
-    --unlit: rgba(22, 19, 16, .055);
-    --shade: rgba(60, 50, 30, .06);
-    --scrim: rgba(28, 25, 21, .45);
+    --amber-glow: rgba(29, 60, 110, 0);
+    --wash: rgba(29, 60, 110, .07);
+    --unlit: rgba(17, 18, 20, .05);
+    --shade: rgba(20, 24, 30, .06);
+    --scrim: rgba(17, 18, 20, .45);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  /* Light: ticker tape and ledger paper, black and red ink, green for gains. */
-  --board: #f6f1e3;        /* paper */
-  --panel: #fffcf3;
-  --rule: #e0d8c3;
-  --rule-hi: #b9ad92;
-  --ink: #161310;          /* black ink */
-  --label: #4f4739;
-  --muted: #665d4d;
+  /* Light: off-white ticker-tape paper, black ink, red and green for meaning, navy for controls. */
+  --board: #f7f7f4;        /* off-white paper */
+  --panel: #ffffff;
+  --rule: #dcdcd6;
+  --rule-hi: #a8a9a3;
+  --ink: #111214;          /* black ink */
+  --label: #43464b;
+  --muted: #5b5f65;
   --red: #b3241c;          /* red ink: in the red */
   --green: #1c6a34;        /* ledger green */
-  --amber: #8f5600;
+  --amber: #1d3c6e;        /* navy: controls and readings */
   --red-glow: rgba(179, 36, 28, 0);
   --green-glow: rgba(28, 106, 52, 0);
-  --amber-glow: rgba(143, 86, 0, 0);
-  --wash: rgba(143, 86, 0, .08);
-  --unlit: rgba(22, 19, 16, .055);
-  --shade: rgba(60, 50, 30, .06);
-  --scrim: rgba(28, 25, 21, .45);
+  --amber-glow: rgba(29, 60, 110, 0);
+  --wash: rgba(29, 60, 110, .07);
+  --unlit: rgba(17, 18, 20, .05);
+  --shade: rgba(20, 24, 30, .06);
+  --scrim: rgba(17, 18, 20, .45);
   color-scheme: light;
 }
 
