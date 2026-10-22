@@ -415,7 +415,10 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     dists = dict((d, a) for d, a in state['dists'])
     for r in rows['BND']:
         if r['div'] > 0:
-            dists[r['date']] = round(r['div'], 6)
+            amount = round(r['div'], 6)
+            # Price feeds sometimes round to 4 decimals; keep Vanguard's exact figure unless this is a real correction.
+            if r['date'] not in dists or abs(dists[r['date']] - amount) > 0.00006:
+                dists[r['date']] = amount
     keep_from = (iso_date(asof) - dt.timedelta(days=3 * 366)).isoformat()
     state['dists'] = sorted([d, a] for d, a in dists.items() if d >= keep_from)
     update_range(state, rows['BND'], asof)

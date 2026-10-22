@@ -43,6 +43,8 @@ PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
     'SPY': (620.0, 0.0006, 0.006, 'quarterly'), 'BIL': (91.5, 0.0, 0.0001, 'monthly'),
 }
+# BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
+FEED_ROUNDED = {'2026-09-01': 0.2529, '2026-10-01': 0.2485}
 
 
 def fake_rows(ticker, start, end):
@@ -57,6 +59,8 @@ def fake_rows(ticker, start, end):
         div = 0.0
         if is_first and (rule == 'monthly' or d.month in (3, 6, 9, 12)):
             div = round(price * (0.0035 if rule == 'monthly' else 0.003), 4)
+        if ticker == 'BND' and d.isoformat() in FEED_ROUNDED:
+            div = FEED_ROUNDED[d.isoformat()]
         if d >= start:
             rows.append({'date': d.isoformat(), 'close': round(price, 2), 'div': div, 'split': 1.0})
     return rows
@@ -104,8 +108,14 @@ def main():
         months0 = len(n0['returns']['BND'])
 
         # 1. A normal weekday evening in the same month
-        code, st, status, page, _ = run_case('same month', dt.datetime(2026, 10, 23, 19, 30, tzinfo=ET), workdir=w)
+        code, st, status, page, before = run_case('same month', dt.datetime(2026, 10, 23, 19, 30, tzinfo=ET), workdir=w)
         check('same month: success', code == 0)
+        old_d, new_d = dict(json.loads(before)['dists']), dict(st['dists'])
+        check("same month: Vanguard's exact distribution amounts survive the feed's rounded ones",
+              new_d['2026-09-01'] == 0.252886 and new_d['2026-10-01'] == 0.248502)
+        feed = {r['date']: r['div'] for r in fake_rows('BND', dt.date(2025, 9, 18), dt.date(2026, 10, 23)) if r['div'] > 0}
+        check('same month: real corrections from the feed are taken',
+              all(new_d[d] == a for d, a in feed.items() if abs(old_d.get(d, -1) - a) > 0.00006))
         check('same month: data through Oct 23', page['asOf'] == '2026-10-23')
         check('same month: no month finalized', st['returns']['final_through'] == '2026-09' and len(st['returns']['BND']) == months0)
         check('same month: status compares the new numbers with the old ones', status.get('checks', {}).get('month') == '2026-10')
