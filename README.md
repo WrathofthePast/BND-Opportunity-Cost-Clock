@@ -1,7 +1,7 @@
 # BND Opportunity Cost Clock
 
 A real-time clock, in the style of usdebtclock.org, showing what holders of the Vanguard Total Bond
-Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (VOO), Nvidia stock (NVDA), 10-year TIPS from TreasuryDirect, 3-month T-bills and
+Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (VOO), international stocks (VXUS), Nvidia stock (NVDA), 10-year TIPS from TreasuryDirect, 3-month T-bills and
 inflation (CPI).
 
 **Live site:** https://delightfullygrateful.com
@@ -10,7 +10,7 @@ inflation (CPI).
 
 | What | When | Where it comes from |
 |---|---|---|
-| Prices, distributions and splits for BND, VTI, VOO, NVDA | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
+| Prices, distributions and splits for BND, VTI, VOO, VXUS, NVDA | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
 | Treasury yields: 3-month and 10-year, and the real (TIPS) yield curve, which drive the T-bill and TIPS comparisons | Every weekday | U.S. Treasury daily par yield curve |
 | CPI | When the BLS publishes it (mid-month) | BLS API |
 | BND net assets, SEC yield, duration, unrealized gains | When Vanguard's site allows automated reads | Vanguard fund page (best effort) |
@@ -91,6 +91,9 @@ Or ask Claude to refresh them.
 - The S&P 500 is VOO (0.03% fee) from October 2010. VOO launched Sept 7, 2010, so June 2007 to
   September 2010 use SPY (0.0945%), which tracks the same index; the page marks figures that include
   those months with an asterisk.
+- International stocks are VXUS (0.05% fee) from February 2011. VXUS launched in January 2011, so
+  June 2007 to January 2011 use Vanguard's VGTSX (0.17%), which holds the same stocks; also marked
+  with an asterisk.
 - BND, VTI and VOO returns are after their funds' expense ratios, since fees come out of the
   funds' assets and so out of their prices.
 - Opportunity cost for a month = dollars at work in BND × (alternative's return − BND's return),
