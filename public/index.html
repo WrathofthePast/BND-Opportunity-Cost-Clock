@@ -741,13 +741,19 @@ var BNDClock = (function () {
 
   // ---------- fitting LED numbers to their placards ----------
   var fitPending = [];
-  function fit(el) {
-    var max = +el.getAttribute('data-max') || 30, min = +el.getAttribute('data-min') || 13;
-    el.style.fontSize = max + 'px';
-    var w = el.scrollWidth, avail = el.clientWidth;
-    if (w > avail && avail > 0) el.style.fontSize = Math.max(min, Math.floor(max * avail / w * 0.985 * 10) / 10) + 'px';
+  // Writes every size first and then reads every width, so a whole page refit costs one layout.
+  function fitList(els) {
+    var i, el, w = [], avail = [];
+    for (i = 0; i < els.length; i++) els[i].style.fontSize = (+els[i].getAttribute('data-max') || 30) + 'px';
+    for (i = 0; i < els.length; i++) { w.push(els[i].scrollWidth); avail.push(els[i].clientWidth); }
+    for (i = 0; i < els.length; i++) {
+      el = els[i];
+      var max = +el.getAttribute('data-max') || 30, min = +el.getAttribute('data-min') || 13;
+      if (w[i] > avail[i] && avail[i] > 0) el.style.fontSize = Math.max(min, Math.floor(max * avail[i] / w[i] * 0.985 * 10) / 10) + 'px';
+    }
   }
-  function fitAll() { var els = document.querySelectorAll('.val[data-max]'); for (var i = 0; i < els.length; i++) fit(els[i]); }
+  function fit(el) { fitList([el]); }
+  function fitAll() { fitList(document.querySelectorAll('.val[data-max]')); }
 
   // ---------- ticking registry ----------
   var tickers = [];
@@ -1336,7 +1342,7 @@ var BNDClock = (function () {
       if (inf && iv.textContent !== inf.value) iv.textContent = inf.value;
       if (inf) setTone(iv, inf.tone || 'ink');
     }
-    if (fitPending.length) { var list = fitPending; fitPending = []; list.forEach(fit); }
+    if (fitPending.length) { var list = fitPending; fitPending = []; fitList(list); }
   }
   function frame(ts) {
     if (ts - lastPaint >= interval) { lastPaint = ts; tick(false); }
@@ -1352,9 +1358,15 @@ var BNDClock = (function () {
   yearRows = E.years(state.alt);
   renderStatic(); renderLabels(); computeMy(); renderYearTable(); renderTM();
   tick(true); fitAll();
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitAll(); drawChart(); });
+  if (document.fonts) {
+    if (document.fonts.ready) document.fonts.ready.then(function () { fitAll(); drawChart(); });
+    // a font that finishes loading later (a slow first visit) changes the numbers' widths
+    if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', function () { fitAll(); drawChart(); });
+  }
   var rz = null;
-  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { fitAll(); drawChart(); }, 120); });
+  // Refit the numbers before the next paint, so a resize or phone rotation never shows a clipped number;
+  // the chart is redrawn once the resizing stops.
+  window.addEventListener('resize', function () { fitAll(); clearTimeout(rz); rz = setTimeout(drawChart, 120); });
   requestAnimationFrame(frame);
 })();
 </script>

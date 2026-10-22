@@ -395,7 +395,7 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             'month': prov['month'],
             'previousThrough': prov['asOf'],
             'newThrough': factors['BND'][prov['month']][2],
-            'changePct': {t: round((factors[t][prov['month']][0] - 1) * 100 - prov[t] / 1e4, 4) for t in TICKERS},
+            'changePct': {t: round((factors[t][prov['month']][0] - 1) * 100 - prov[t] / 1e4, 4) + 0.0 for t in TICKERS},  # + 0.0: no "-0.0"
         }
 
     update_peak(state, rows['BND'], bases['BND'])   # before months are finalized (uses the old base)
