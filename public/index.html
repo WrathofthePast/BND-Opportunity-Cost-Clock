@@ -13,7 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23000'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ff4436' font-family='monospace' font-weight='bold'%3E%24%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&amp;display=swap">
+<link rel="preload" href="fonts/ticker-5x7.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Barlow:wght@400;500;600&amp;display=swap">
 <script>try { var t = localStorage.getItem("bnd-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
 <style>
@@ -38,7 +38,7 @@
   --shade: rgba(0, 0, 0, .9);
   --scrim: rgba(0, 0, 0, .74);
 
-  --font-led: "Doto", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-led: "Ticker 5x7", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-label: "Barlow Semi Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif;
   --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
 
@@ -88,6 +88,8 @@
   color-scheme: light;
 }
 
+/* Dot-matrix numbers in the style of the lighted-dot stock tickers: round dots on a 5 x 7 grid (scripts/build_ticker_font.py) */
+@font-face { font-family: "Ticker 5x7"; src: url("fonts/ticker-5x7.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { background: var(--board); }
@@ -129,7 +131,7 @@ button { font: inherit; color: inherit; }
 .brand p { margin: 10px 0 0; color: var(--label); }
 .now { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
 .now-time {
-  font: 900 19px/1 var(--font-led); color: var(--amber);
+  font: 900 21px/1 var(--font-led); color: var(--amber);
   text-shadow: 0 0 .4em var(--amber-glow); white-space: nowrap;
 }
 .now-data { font: 500 13.5px/1.3 var(--font-label); color: var(--muted); letter-spacing: .03em; }
@@ -171,7 +173,7 @@ button { font: inherit; color: inherit; }
 /* ---------- LED readouts ---------- */
 .val {
   display: block; white-space: nowrap; min-width: 0;
-  font: 900 30px/1 var(--font-led); letter-spacing: .01em;
+  font: 900 34px/1 var(--font-led); letter-spacing: .01em;
   color: var(--ink);
 }
 .red { color: var(--red); text-shadow: 0 0 .32em var(--red-glow); }
@@ -242,7 +244,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 600px; }
 .years { display: flex; flex-wrap: wrap; gap: 6px; }
 .years .chip { min-width: 54px; justify-content: center; }
 .years .chip.proj { border-style: dashed; }
-.tm-stamp { font: 900 18px/1.2 var(--font-led); color: var(--amber); text-shadow: 0 0 .4em var(--amber-glow); }
+.tm-stamp { font: 900 21px/1.2 var(--font-led); color: var(--amber); text-shadow: 0 0 .4em var(--amber-glow); }
 .chart-box { border: 1px solid var(--rule); padding: 16px 14px 10px; display: flex; flex-direction: column; gap: 10px; position: relative; }
 .chart-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: baseline; }
 .chart-title { margin: 0; font: 700 15px/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
@@ -409,11 +411,11 @@ dialog.info::backdrop { background: var(--scrim); }
       <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="112" data-min="20" data-template="−$000,000,000,000">&mdash;</span></span>
     </div>
     <div class="board cols-5" id="heroStats">
-      <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="30">&mdash;</span><span class="sub" id="sRate"></span></button>
-      <button type="button" class="cell" data-info="rateDay"><span class="lab">Per day</span><span class="val red" id="vRateDay" data-max="30">&mdash;</span><span class="sub" id="sRateDay"></span></button>
-      <button type="button" class="cell" data-info="rateYear"><span class="lab">Per year</span><span class="val red" id="vRateYear" data-max="30">&mdash;</span><span class="sub" id="sRateYear"></span></button>
-      <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="30">&mdash;</span><span class="sub" id="sPerShare"></span></button>
-      <button type="button" class="cell" data-info="perTenK"><span class="lab" id="lPerTenK">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="30">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
+      <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="34">&mdash;</span><span class="sub" id="sRate"></span></button>
+      <button type="button" class="cell" data-info="rateDay"><span class="lab">Per day</span><span class="val red" id="vRateDay" data-max="34">&mdash;</span><span class="sub" id="sRateDay"></span></button>
+      <button type="button" class="cell" data-info="rateYear"><span class="lab">Per year</span><span class="val red" id="vRateYear" data-max="34">&mdash;</span><span class="sub" id="sRateYear"></span></button>
+      <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="34">&mdash;</span><span class="sub" id="sPerShare"></span></button>
+      <button type="button" class="cell" data-info="perTenK"><span class="lab" id="lPerTenK">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="34">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
     </div>
     <p class="hero-note" id="heroNote">Every month in the period you pick, the clock compares what its holders' money earned, distributions included, with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
   </section>
@@ -424,11 +426,11 @@ dialog.info::backdrop { background: var(--scrim); }
       <p id="pPeriods">Opportunity cost to all BND holders, same method, counting only the months in each window.</p>
     </div>
     <div class="board cols-5">
-      <button type="button" class="cell" data-info="p:ytd"><span class="lab" id="lP_ytd">This year so far</span><span class="val red" id="vP_ytd" data-max="30">&mdash;</span><span class="sub" id="sP_ytd"></span></button>
-      <button type="button" class="cell" data-info="p:m12"><span class="lab">Last 12 months</span><span class="val red" id="vP_m12" data-max="30">&mdash;</span><span class="sub" id="sP_m12"></span></button>
-      <button type="button" class="cell" data-info="p:peak"><span class="lab" id="lP_peak">Since the peak</span><span class="val red" id="vP_peak" data-max="30">&mdash;</span><span class="sub" id="sP_peak"></span></button>
-      <button type="button" class="cell" data-info="p:y5"><span class="lab">Last 5 years</span><span class="val red" id="vP_y5" data-max="30">&mdash;</span><span class="sub" id="sP_y5"></span></button>
-      <button type="button" class="cell" data-info="p:y10"><span class="lab">Last 10 years</span><span class="val red" id="vP_y10" data-max="30">&mdash;</span><span class="sub" id="sP_y10"></span></button>
+      <button type="button" class="cell" data-info="p:ytd"><span class="lab" id="lP_ytd">This year so far</span><span class="val red" id="vP_ytd" data-max="34">&mdash;</span><span class="sub" id="sP_ytd"></span></button>
+      <button type="button" class="cell" data-info="p:m12"><span class="lab">Last 12 months</span><span class="val red" id="vP_m12" data-max="34">&mdash;</span><span class="sub" id="sP_m12"></span></button>
+      <button type="button" class="cell" data-info="p:peak"><span class="lab" id="lP_peak">Since the peak</span><span class="val red" id="vP_peak" data-max="34">&mdash;</span><span class="sub" id="sP_peak"></span></button>
+      <button type="button" class="cell" data-info="p:y5"><span class="lab">Last 5 years</span><span class="val red" id="vP_y5" data-max="34">&mdash;</span><span class="sub" id="sP_y5"></span></button>
+      <button type="button" class="cell" data-info="p:y10"><span class="lab">Last 10 years</span><span class="val red" id="vP_y10" data-max="34">&mdash;</span><span class="sub" id="sP_y10"></span></button>
     </div>
   </section>
 
@@ -438,11 +440,11 @@ dialog.info::backdrop { background: var(--scrim); }
       <p id="pPeak"></p>
     </div>
     <div class="board cols-5">
-      <button type="button" class="cell" data-info="under"><span class="lab">Time below the peak</span><span class="val red" id="vUnder" data-max="30">&mdash;</span><span class="sub" id="sUnder"></span></button>
-      <button type="button" class="cell" data-info="trdd"><span class="lab">Total return vs. peak</span><span class="val red" id="vTrdd" data-max="30">&mdash;</span><span class="sub">Distributions reinvested</span></button>
-      <button type="button" class="cell" data-info="realdd"><span class="lab">After inflation</span><span class="val red" id="vRealdd" data-max="30">&mdash;</span><span class="sub" id="sRealdd"></span></button>
-      <button type="button" class="cell" data-info="pdd"><span class="lab">Price vs. record close</span><span class="val red" id="vPdd" data-max="30">&mdash;</span><span class="sub" id="sPdd"></span></button>
-      <button type="button" class="cell" data-info="closest"><span class="lab">Closest it came back</span><span class="val amber" id="vClosest" data-max="30">&mdash;</span><span class="sub" id="sClosest"></span></button>
+      <button type="button" class="cell" data-info="under"><span class="lab">Time below the peak</span><span class="val red" id="vUnder" data-max="34">&mdash;</span><span class="sub" id="sUnder"></span></button>
+      <button type="button" class="cell" data-info="trdd"><span class="lab">Total return vs. peak</span><span class="val red" id="vTrdd" data-max="34">&mdash;</span><span class="sub">Distributions reinvested</span></button>
+      <button type="button" class="cell" data-info="realdd"><span class="lab">After inflation</span><span class="val red" id="vRealdd" data-max="34">&mdash;</span><span class="sub" id="sRealdd"></span></button>
+      <button type="button" class="cell" data-info="pdd"><span class="lab">Price vs. record close</span><span class="val red" id="vPdd" data-max="34">&mdash;</span><span class="sub" id="sPdd"></span></button>
+      <button type="button" class="cell" data-info="closest"><span class="lab">Closest it came back</span><span class="val amber" id="vClosest" data-max="34">&mdash;</span><span class="sub" id="sClosest"></span></button>
     </div>
   </section>
 
@@ -475,14 +477,14 @@ dialog.info::backdrop { background: var(--scrim); }
     <div class="years" role="radiogroup" aria-label="Year" id="yearGroup"></div>
     <div class="tm-stamp" id="tmStamp" aria-live="polite"></div>
     <div class="board cols-4" id="tmBoard">
-      <div class="cell static"><span class="lab" id="tmL1">Opportunity cost since 2007</span><span class="val red" id="tmV1" data-max="30">&mdash;</span><span class="sub" id="tmS1"></span></div>
-      <div class="cell static"><span class="lab" id="tmL2">Opportunity cost during the year</span><span class="val red" id="tmV2" data-max="30">&mdash;</span><span class="sub" id="tmS2"></span></div>
-      <div class="cell static"><span class="lab" id="tmL3">BND return</span><span class="val amber" id="tmV3" data-max="30">&mdash;</span><span class="sub" id="tmS3"></span></div>
-      <div class="cell static"><span class="lab" id="tmL4">VTI return</span><span class="val amber" id="tmV4" data-max="30">&mdash;</span><span class="sub" id="tmS4"></span></div>
-      <div class="cell static"><span class="lab" id="tmL5">BND net assets</span><span class="val amber" id="tmV5" data-max="30">&mdash;</span><span class="sub" id="tmS5"></span></div>
-      <div class="cell static"><span class="lab" id="tmL6">$10,000 from May 2007, in BND</span><span class="val ink" id="tmV6" data-max="30">&mdash;</span><span class="sub" id="tmS6"></span></div>
-      <div class="cell static"><span class="lab" id="tmL7">$10,000 from May 2007, in VTI</span><span class="val ink" id="tmV7" data-max="30">&mdash;</span><span class="sub" id="tmS7"></span></div>
-      <div class="cell static"><span class="lab" id="tmL8">Inflation</span><span class="val amber" id="tmV8" data-max="30">&mdash;</span><span class="sub" id="tmS8"></span></div>
+      <div class="cell static"><span class="lab" id="tmL1">Opportunity cost since 2007</span><span class="val red" id="tmV1" data-max="34">&mdash;</span><span class="sub" id="tmS1"></span></div>
+      <div class="cell static"><span class="lab" id="tmL2">Opportunity cost during the year</span><span class="val red" id="tmV2" data-max="34">&mdash;</span><span class="sub" id="tmS2"></span></div>
+      <div class="cell static"><span class="lab" id="tmL3">BND return</span><span class="val amber" id="tmV3" data-max="34">&mdash;</span><span class="sub" id="tmS3"></span></div>
+      <div class="cell static"><span class="lab" id="tmL4">VTI return</span><span class="val amber" id="tmV4" data-max="34">&mdash;</span><span class="sub" id="tmS4"></span></div>
+      <div class="cell static"><span class="lab" id="tmL5">BND net assets</span><span class="val amber" id="tmV5" data-max="34">&mdash;</span><span class="sub" id="tmS5"></span></div>
+      <div class="cell static"><span class="lab" id="tmL6">$10,000 from May 2007, in BND</span><span class="val ink" id="tmV6" data-max="34">&mdash;</span><span class="sub" id="tmS6"></span></div>
+      <div class="cell static"><span class="lab" id="tmL7">$10,000 from May 2007, in VTI</span><span class="val ink" id="tmV7" data-max="34">&mdash;</span><span class="sub" id="tmS7"></span></div>
+      <div class="cell static"><span class="lab" id="tmL8">Inflation</span><span class="val amber" id="tmV8" data-max="34">&mdash;</span><span class="sub" id="tmS8"></span></div>
     </div>
     <p class="fee-line" id="tmNote" hidden></p>
     <div class="chart-box">
@@ -518,11 +520,11 @@ dialog.info::backdrop { background: var(--scrim); }
     </form>
     <p class="example-note" id="myExample">Showing an example: $10,000 put into BND at the start of January 2021. Enter your own figures above.</p>
     <div class="board cols-5">
-      <div class="cell static"><span class="lab">Your BND balance</span><span class="val amber" id="vMyB" data-max="30">&mdash;</span><span class="sub" id="sMyB"></span></div>
-      <div class="cell static"><span class="lab" id="lMyX">Same money in VTI</span><span class="val ink" id="vMyX" data-max="30">&mdash;</span><span class="sub" id="sMyX"></span></div>
-      <div class="cell static"><span class="lab" id="lMyD">Your opportunity cost</span><span class="val red" id="vMyD" data-max="30">&mdash;</span><span class="sub" id="sMyD"></span></div>
-      <div class="cell static"><span class="lab">You put in</span><span class="val ink" id="vMyPut" data-max="30">&mdash;</span><span class="sub" id="sMyPut"></span></div>
-      <div class="cell static"><span class="lab" id="lMyDay">Change in the gap per day</span><span class="val red" id="vMyDay" data-max="30">&mdash;</span><span class="sub" id="sMyDay"></span></div>
+      <div class="cell static"><span class="lab">Your BND balance</span><span class="val amber" id="vMyB" data-max="34">&mdash;</span><span class="sub" id="sMyB"></span></div>
+      <div class="cell static"><span class="lab" id="lMyX">Same money in VTI</span><span class="val ink" id="vMyX" data-max="34">&mdash;</span><span class="sub" id="sMyX"></span></div>
+      <div class="cell static"><span class="lab" id="lMyD">Your opportunity cost</span><span class="val red" id="vMyD" data-max="34">&mdash;</span><span class="sub" id="sMyD"></span></div>
+      <div class="cell static"><span class="lab">You put in</span><span class="val ink" id="vMyPut" data-max="34">&mdash;</span><span class="sub" id="sMyPut"></span></div>
+      <div class="cell static"><span class="lab" id="lMyDay">Change in the gap per day</span><span class="val red" id="vMyDay" data-max="34">&mdash;</span><span class="sub" id="sMyDay"></span></div>
     </div>
   </section>
 
