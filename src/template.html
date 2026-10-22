@@ -400,7 +400,7 @@ dialog.info::backdrop { background: var(--scrim); }
   <section class="hero" aria-label="Headline clock">
     <div class="hero-main">
       <span class="hero-label" id="heroLabel">Opportunity cost to all BND holders since 2007, vs. US stocks (VTI)</span>
-      <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="180" data-min="20">&mdash;</span></span>
+      <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="180" data-min="20" data-template="−$000,000,000,000">&mdash;</span></span>
     </div>
     <div class="board cols-5" id="heroStats">
       <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="30">&mdash;</span><span class="sub" id="sRate"></span></button>
@@ -797,10 +797,14 @@ var BNDClock = (function () {
   // ---------- fitting LED numbers to their placards ----------
   var fitPending = [];
   // Writes every size first and then reads every width, so a whole page refit costs one layout.
+  // An element with data-template is sized as if it showed that text too (the wider of the two), so its
+  // digits keep the same height whichever amount is on screen.
   function fitList(els) {
-    var i, el, w = [], avail = [];
+    var i, el, w = [], avail = [], tpl = [], keep = [];
     for (i = 0; i < els.length; i++) els[i].style.fontSize = (+els[i].getAttribute('data-max') || 30) + 'px';
     for (i = 0; i < els.length; i++) { w.push(els[i].scrollWidth); avail.push(els[i].clientWidth); }
+    for (i = 0; i < els.length; i++) { tpl.push(els[i].getAttribute('data-template')); keep.push(tpl[i] ? els[i].textContent : null); if (tpl[i]) els[i].textContent = tpl[i]; }
+    for (i = 0; i < els.length; i++) if (tpl[i]) { w[i] = Math.max(w[i], els[i].scrollWidth); els[i].textContent = keep[i]; }
     for (i = 0; i < els.length; i++) {
       el = els[i];
       var max = +el.getAttribute('data-max') || 30, min = +el.getAttribute('data-min') || 13;
