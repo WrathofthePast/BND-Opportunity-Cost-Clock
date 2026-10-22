@@ -4,7 +4,7 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI, VOO and NVDA from Tiingo
+  2. Fetches the latest daily prices and distributions for BND, VTI, VOO, VXUS and NVDA from Tiingo
      (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
      (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
      TreasuryDirect), and fund facts from Vanguard (best effort).
@@ -40,15 +40,15 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'VOO', 'NVDA')   # priced from Tiingo / Yahoo
-SERIES = ('BND', 'VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL')   # monthly return series kept in state.json
+TICKERS = ('BND', 'VTI', 'VOO', 'VXUS', 'NVDA')   # priced from Tiingo / Yahoo
+SERIES = ('BND', 'VTI', 'VOO', 'VXUS', 'NVDA', 'TIPS', 'TBILL')   # monthly return series kept in state.json
 # TIPS = one 10-year TIPS bought at TreasuryDirect (no fee) in May 2007, rolled into a new 10-year TIPS at maturity
-ALTS = ('VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL', 'CPI')
+ALTS = ('VTI', 'VOO', 'VXUS', 'NVDA', 'TIPS', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'VXUS': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 

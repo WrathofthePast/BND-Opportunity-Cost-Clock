@@ -41,7 +41,7 @@ def weekdays(start, end):
 
 PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
-    'VOO': (570.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
+    'VXUS': (72.0, 0.0004, 0.005, 'quarterly'), 'VOO': (570.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
 }
 TBILL_YIELD = 4.2   # flat 3-month Treasury yield in the made-up future
 # BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
