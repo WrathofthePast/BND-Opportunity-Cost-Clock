@@ -947,8 +947,8 @@
   "BND": 12129,
   "VTI": 13120,
   "SPY": 13716,
-  "bndClose": 70.75,
-  "TBILL": 2440
+  "TBILL": 2440,
+  "bndClose": 70.75
  },
  "bnd_close": {
   "start": "2007-05",
@@ -1634,8 +1634,8 @@
   "ytm": 5.6,
   "bonds": 11434,
   "portfolioDate": "2026-09-30",
-  "secYield": 5.11,
-  "secYieldDate": "2026-10-19",
+  "secYield": 5.13,
+  "secYieldDate": "2026-10-20",
   "nav": 70.72,
   "navDate": "2026-10-21",
   "unrealizedPct": -9.98,
@@ -1666,7 +1666,6 @@
  },
  "priceSource": "Tiingo",
  "tbill_daily": {
-  "2026-06-22": 3.85,
   "2026-06-23": 3.85,
   "2026-06-24": 3.85,
   "2026-06-25": 3.84,
