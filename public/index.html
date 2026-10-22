@@ -287,13 +287,32 @@ details.tview[open] summary { margin-bottom: 10px; }
 .example-note { margin: 0; font: 500 14px/1.4 var(--font-label); color: var(--amber); letter-spacing: .02em; }
 
 /* ---------- method ---------- */
-.method { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 36px; }
-.method h3 { margin: 0 0 6px; font: 700 15px/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
-.method p { margin: 0 0 18px; color: var(--label); }
-.method p:last-child { margin-bottom: 0; }
+.folds { gap: 0; }
+.fold { border-top: 1px solid var(--rule); }
+.fold:last-child { border-bottom: 1px solid var(--rule); }
+.fold > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 18px 0;
+}
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before {
+  content: ""; width: 9px; height: 9px; flex: none; margin: 0 2px;
+  border-right: 2px solid var(--amber); border-bottom: 2px solid var(--amber);
+  transform: rotate(-45deg); transition: transform .15s ease;
+}
+.fold[open] > summary::before { transform: rotate(45deg); }
+.fold > summary h2 { margin: 0; font: 700 19px/1.2 var(--font-label); letter-spacing: .07em; text-transform: uppercase; }
+.fold > summary:hover h2 { color: var(--amber); }
+.fold-body { padding: 2px 0 28px; }
+.method-body { columns: 2 460px; column-gap: 44px; }
+.method-body h3 { break-after: avoid; }
+.method-body h3 { margin: 0 0 6px; font: 700 15px/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
+.method-body p { margin: 0 0 18px; color: var(--label); }
+.method-body p:last-child { margin-bottom: 0; }
 .sources { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .sources li { padding-left: 14px; border-left: 2px solid var(--rule-hi); color: var(--label); font-size: 15px; }
 .sources b { color: var(--ink); font-weight: 600; }
+.fold .sources { display: block; columns: 2 420px; column-gap: 44px; }
+.fold .sources li { break-inside: avoid; margin-bottom: 16px; }
 footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
 footer p { margin: 0; }
 
@@ -321,7 +340,6 @@ dialog.info::backdrop { background: var(--scrim); }
   .cols-5 > :first-child { grid-column: 1 / -1; }
   .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .my-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .method { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
   .wrap { gap: 40px; }
@@ -506,10 +524,10 @@ dialog.info::backdrop { background: var(--scrim); }
     </div>
   </section>
 
-  <section class="panel" id="method" aria-labelledby="hMethod">
-    <div class="panel-head"><h2 id="hMethod">How the clock works</h2></div>
-    <div class="method">
-      <div>
+  <section class="panel folds" id="method" aria-label="How the clock works, and sources">
+    <details class="fold" id="foldMethod">
+      <summary><h2 id="hMethod">How the clock works</h2></summary>
+      <div class="fold-body method-body">
         <h3>Total returns, not share prices</h3>
         <p id="mTotal">A fund’s share price leaves out the income it pays out. Every return on this page is a total return: distributions and dividends reinvested for BND, VTI, VOO, VXUS and Nvidia, and interest for TIPS and T-bills.</p>
         <h3>Fees</h3>
@@ -525,8 +543,10 @@ dialog.info::backdrop { background: var(--scrim); }
         <h3>What it leaves out</h3>
         <p>Hindsight comparisons ignore risk. US stocks fell 37% in 2008 while BND gained 6.9%, and people hold bonds for stability, income and diversification, not to beat stocks. Taxes, trading costs and personal timing also differ. This page is information, not investment advice.</p>
       </div>
-      <div>
-        <h3>Sources</h3>
+    </details>
+    <details class="fold" id="foldSources">
+      <summary><h2 id="hSources">Sources</h2></summary>
+      <div class="fold-body">
         <ul class="sources">
           <li><b>Tiingo.</b> Daily closing prices, distributions and stock splits for BND, VTI, VOO, VXUS and NVDA, refreshed each weekday. <a href="https://www.tiingo.com/" target="_blank" rel="noopener">tiingo.com</a></li>
           <li><b>Vanguard, BND fund page.</b> Net assets, SEC yield, portfolio characteristics and unrealized gains; its official returns calibrate the history through September 2026. <a href="https://investor.vanguard.com/investment-products/etfs/profile/bnd" target="_blank" rel="noopener">investor.vanguard.com</a></li>
@@ -536,7 +556,7 @@ dialog.info::backdrop { background: var(--scrim); }
           <li><b>Yahoo Finance.</b> Monthly price history from June 2007 through October 2026, and backup daily prices. <a href="https://finance.yahoo.com/quote/BND/history/" target="_blank" rel="noopener">finance.yahoo.com</a></li>
         </ul>
       </div>
-    </div>
+    </details>
   </section>
 
   <footer>
