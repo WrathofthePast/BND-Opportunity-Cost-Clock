@@ -1,8 +1,56 @@
 {
  "asOf": "2026-10-21",
- "dataUpdated": "2026-10-22T03:56:10+00:00",
+ "dataUpdated": "2026-10-22T04:05:25+00:00",
  "warnings": [],
- "sources": {},
+ "sources": {
+  "prices": {
+   "ok": true,
+   "source": "Tiingo",
+   "through": "2026-10-21"
+  },
+  "cpi": {
+   "ok": true,
+   "through": "2026-09"
+  },
+  "treasury": {
+   "ok": true,
+   "through": "2026-10-21"
+  },
+  "vanguard": {
+   "ok": true,
+   "fields": [
+    "avgCoupon",
+    "avgMaturity",
+    "bonds",
+    "duration",
+    "expenseRatio",
+    "fundTna",
+    "nav",
+    "navDate",
+    "peerExpenseRatio",
+    "portfolioDate",
+    "secYield",
+    "secYieldDate",
+    "tna",
+    "tnaDate",
+    "unrealizedDate",
+    "unrealizedPct",
+    "unrealizedPerShare",
+    "ytm"
+   ],
+   "error": null
+  }
+ },
  "finalizedThisRun": [],
- "checks": null
+ "checks": {
+  "month": "2026-10",
+  "previousThrough": "2026-10-21",
+  "newThrough": "2026-10-21",
+  "changePct": {
+   "BND": -0.0059,
+   "VTI": 0.0016,
+   "SPY": -0.0,
+   "BIL": 0.0001
+  }
+ }
 }
