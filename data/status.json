@@ -1,9 +1,7 @@
 {
  "asOf": "2026-10-21",
- "dataUpdated": "2026-10-22T17:10:13+00:00",
- "warnings": [
-  "CPI not refreshed: api.bls.gov: HTTP Error 503: Service Unavailable"
- ],
+ "dataUpdated": "2026-10-22T20:35:29+00:00",
+ "warnings": [],
  "sources": {
   "prices": {
    "ok": true,
@@ -11,13 +9,13 @@
    "through": "2026-10-21"
   },
   "cpi": {
-   "ok": false,
-   "error": "api.bls.gov: HTTP Error 503: Service Unavailable",
-   "through": "2026-09"
+   "ok": true,
+   "through": "2026-09",
+   "withKey": true
   },
   "treasury": {
    "ok": true,
-   "through": "2026-10-21"
+   "through": "2026-10-22"
   },
   "vanguard": {
    "ok": true,
