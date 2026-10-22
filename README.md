@@ -1,7 +1,7 @@
 # BND Opportunity Cost Clock
 
 A real-time clock, in the style of usdebtclock.org, showing what holders of the Vanguard Total Bond
-Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (SPY), T-bills (BIL) and
+Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (SPY), 3-month T-bills and
 inflation (CPI).
 
 **Live site:** https://delightfullygrateful.com
@@ -10,8 +10,8 @@ inflation (CPI).
 
 | What | When | Where it comes from |
 |---|---|---|
-| Prices and distributions for BND, VTI, SPY, BIL | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
-| 3-month and 10-year Treasury yields | Every weekday | U.S. Treasury daily par yield curve |
+| Prices and distributions for BND, VTI, SPY | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
+| 3-month and 10-year Treasury yields (the 3-month yield is also the T-bill comparison) | Every weekday | U.S. Treasury daily par yield curve |
 | CPI | When the BLS publishes it (mid-month) | BLS API |
 | BND net assets, SEC yield, duration, unrealized gains | When Vanguard's site allows automated reads | Vanguard fund page (best effort) |
 | Year-end net assets, 2007 to 2025 | Already in the data | Vanguard annual reports (SEC Form N-CSR) |
@@ -77,6 +77,12 @@ Or ask Claude to refresh them.
   (their 1-, 3-, 5- and 10-year returns agree with Vanguard's to within 0.01 percentage point).
   Later months come from daily
   closes and distributions.
+- T-bills are fee-free 3-month Treasury bills, as bought at TreasuryDirect and rolled over: each
+  calendar day earns 1/365 of the latest 3-month Treasury yield. (Until October 2026 the clock used
+  the BIL ETF, whose fee and shorter maturity made it trail the bills by 0.2 to 0.35 points a year.
+  `history/tbill_from_treasury.py` rebuilds the history from the Treasury's files.)
+- BND, VTI and SPY returns are after their funds' expense ratios, since fees come out of the
+  funds' assets and so out of their prices.
 - Opportunity cost for a month = dollars at work in BND × (alternative's return − BND's return),
   where dollars at work = previous month-end net assets + half of the month's new money. The
   clock adds the monthly amounts without compounding them.

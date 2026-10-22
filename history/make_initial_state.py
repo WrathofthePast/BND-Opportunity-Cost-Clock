@@ -14,7 +14,7 @@ ROOT = H.parent
 S = json.load(open(H / 'clock_series.json'))
 Y = json.load(open(H / 'yahoo_monthly_ppm.json'))
 n = S['n']                      # 233 months, June 2007 .. October 2026 (October through Oct 21)
-TICKERS = ('BND', 'VTI', 'SPY', 'BIL')
+TICKERS = ('BND', 'VTI', 'SPY', 'BIL')  # BIL was replaced by fee-free T-bills on Oct 22, 2026 (history/tbill_from_treasury.py)
 
 cpi = {}
 for row in csv.DictReader(open(H / 'cpiai.csv')):

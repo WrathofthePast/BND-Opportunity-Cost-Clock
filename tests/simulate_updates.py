@@ -41,8 +41,9 @@ def weekdays(start, end):
 
 PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
-    'SPY': (620.0, 0.0006, 0.006, 'quarterly'), 'BIL': (91.5, 0.0, 0.0001, 'monthly'),
+    'SPY': (620.0, 0.0006, 0.006, 'quarterly'),
 }
+TBILL_YIELD = 4.2   # flat 3-month Treasury yield in the made-up future
 # BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
 FEED_ROUNDED = {'2026-09-01': 0.2529, '2026-10-01': 0.2485}
 
@@ -66,7 +67,7 @@ def fake_rows(ticker, start, end):
     return rows
 
 
-def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, cpi=None, vanguard=None, workdir):
+def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, treasury_ok=True, cpi=None, vanguard=None, workdir):
     state_before = (workdir / 'data' / 'state.json').read_text()
     ud.ROOT, ud.DATA = workdir, workdir / 'data'
 
@@ -86,8 +87,14 @@ def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, cpi=None, vanguard=
         return cpi
 
     ud.fetch_tiingo, ud.fetch_yahoo, ud.fetch_cpi = tiingo, yahoo, fake_cpi
-    ud.fetch_treasury = lambda today: {'tbill': 4.2, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0,
-                                       'date': (today - dt.timedelta(days=1)).isoformat(), 'source': 'U.S. Treasury daily par yield curve'}
+    def treasury(today):
+        if not treasury_ok:
+            raise RuntimeError('home.treasury.gov: HTTP Error 503: Service Unavailable')
+        last = today - dt.timedelta(days=1)   # published the evening before the run
+        daily = {d.isoformat(): TBILL_YIELD for d in weekdays(dt.date(2026, 10, 22), last)}
+        return {'rates': {'tbill': TBILL_YIELD, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0, 'date': max(daily),
+                          'source': 'U.S. Treasury daily par yield curve'}, 'daily': daily}
+    ud.fetch_treasury = treasury
     ud.fetch_vanguard = lambda: vanguard or ({}, ['characteristic: investor.vanguard.com: HTTP Error 403: Forbidden'])
     import os
     os.environ['TIINGO_API_KEY'] = 'test-key'
@@ -136,6 +143,9 @@ def main():
         check('rollover: October finalized', st['returns']['final_through'] == '2026-10' and status['finalizedThisRun'] == ['2026-10'])
         check('rollover: one more month of history', len(st['returns']['BND']) == months0 + 1)
         check('rollover: November is the running month', st['provisional']['month'] == '2026-11' and page['n'] == months0 + 2)
+        oct_tb = st['returns']['TBILL'][-1] / 1e6
+        exp = ud.tbill_factor({**{d: v for d, v in st['tbill_daily'].items()}}, dt.date(2026, 10, 1), dt.date(2026, 10, 31)) - 1
+        check(f'rollover: October T-bill return from Treasury yields ({oct_tb:.4%})', abs(oct_tb - exp) < 1e-6 and 0.003 < oct_tb < 0.004)
         check('rollover: November distribution recorded', any(d.startswith('2026-11') for d, a in st['dists']))
         check('rollover: October CPI estimated until published', page['r']['CPI'][-2] > 0)
         r = subprocess.run(['node', str(w / 'tests' / 'test_engine.js')], capture_output=True, text=True, cwd=w)
@@ -159,10 +169,24 @@ def main():
         if os.environ.get('SIM_KEEP'):
             shutil.copy(w / 'public' / 'index.html', os.environ['SIM_KEEP'])
 
+        # 4b. Treasury down in the middle of a month: carry on with the last published yield
+        code, st, status, page, _ = run_case('Treasury outage mid-month', dt.datetime(2027, 1, 7, 19, 30, tzinfo=ET),
+                                             treasury_ok=False, workdir=w)
+        check('Treasury outage mid-month: still updates', code == 0 and status['sources']['treasury']['ok'] is False)
+        check('Treasury outage mid-month: says the T-bill month uses the last yield',
+              any('last published 3-month yield' in n for n in status['warnings']))
+
         # 5. Tiingo down, Yahoo works
         code, st, status, page, _ = run_case('Tiingo outage', dt.datetime(2027, 1, 7, 19, 30, tzinfo=ET),
                                              tiingo_ok=False, workdir=w)
         check('Tiingo outage: falls back to Yahoo', code == 0 and status['sources']['prices']['source'] == 'Yahoo Finance')
+
+        # 5b. Treasury down when a month must be finalized: the update stops, nothing changes
+        before = {p: (w / p).read_text() for p in ('data/state.json', 'public/index.html')}
+        code, st, status, page, _ = run_case('Treasury outage at month end', dt.datetime(2027, 2, 2, 19, 30, tzinfo=ET),
+                                             treasury_ok=False, workdir=w)
+        check('Treasury outage at month end: January is not finalized without its yields',
+              code == 1 and before == {p: (w / p).read_text() for p in before} and 'not finalizing' in status['lastError']['message'])
 
         # 6. Everything down: nothing changes except status.json
         before = {p: (w / p).read_text() for p in ('data/state.json', 'data/clock-data.json', 'public/index.html')}
