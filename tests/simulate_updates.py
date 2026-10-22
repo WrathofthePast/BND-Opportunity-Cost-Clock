@@ -41,7 +41,7 @@ def weekdays(start, end):
 
 PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
-    'VOO': (570.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'), 'TIP': (110.0, 0.0001, 0.003, 'monthly'),
+    'VOO': (570.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
 }
 TBILL_YIELD = 4.2   # flat 3-month Treasury yield in the made-up future
 # BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
@@ -92,8 +92,9 @@ def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, treasury_ok=True, c
             raise RuntimeError('home.treasury.gov: HTTP Error 503: Service Unavailable')
         last = today - dt.timedelta(days=1)   # published the evening before the run
         daily = {d.isoformat(): TBILL_YIELD for d in weekdays(dt.date(2026, 10, 22), last)}
+        real = {d: [2.5, 2.6, 2.7, 3.0] for d in daily}
         return {'rates': {'tbill': TBILL_YIELD, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0, 'date': max(daily),
-                          'source': 'U.S. Treasury daily par yield curve'}, 'daily': daily}
+                          'source': 'U.S. Treasury daily par yield curve'}, 'daily': daily, 'real': real}
     ud.fetch_treasury = treasury
     ud.fetch_vanguard_expense = lambda t: {'er': 0.03, 'asOf': '2026-04-28', 'source': 'Vanguard'}
     ud.fetch_vanguard = lambda: vanguard or ({}, ['characteristic: investor.vanguard.com: HTTP Error 403: Forbidden'])
@@ -116,8 +117,21 @@ def split_check():
     check(f'10-for-1 split counted as a gain, not a loss ({f - 1:+.4%})', abs(f - 1010 / 1000 * 102.01 / 101) < 1e-12)
 
 
+def tips_check():
+    """A maturing TIPS returns 100 plus interest and inflation, then rolls into a new 10-year TIPS."""
+    cpi = {'2027-02': 340.0, '2027-03': 341.7}
+    bond = {'coupon': 0.375, 'maturity': '2027-05', 'price': 99.9}
+    f, p = ud.tips_month(bond, '2027-05', [2.5, 2.6, 2.7, 3.0], cpi)
+    check(f'TIPS maturity month pays par plus interest and inflation ({f - 1:+.4%})',
+          p == 100.0 and abs(f - (100 + 0.375 / 12) / 99.9 * 341.7 / 340.0) < 1e-12)
+    new = ud.tips_roll('2027-05', [2.5, 2.6, 2.7, 3.0])
+    check('TIPS roll into a new 10-year bond with a 1/8-step coupon',
+          new['maturity'] == '2037-05' and new['coupon'] == 2.625 and 99 < new['price'] <= 100)
+
+
 def main():
     split_check()
+    tips_check()
     with tempfile.TemporaryDirectory() as tmp:
         w = Path(tmp)
         for sub in ('data', 'src', 'scripts', 'tests'):

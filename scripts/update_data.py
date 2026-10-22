@@ -4,7 +4,7 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI, VOO, NVDA and TIP from Tiingo
+  2. Fetches the latest daily prices and distributions for BND, VTI, VOO and NVDA from Tiingo
      (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
      (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
      TreasuryDirect), and fund facts from Vanguard (best effort).
@@ -40,15 +40,15 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'VOO', 'NVDA', 'TIP')   # priced from Tiingo / Yahoo
+TICKERS = ('BND', 'VTI', 'VOO', 'NVDA')   # priced from Tiingo / Yahoo
 SERIES = ('BND', 'VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL')   # monthly return series kept in state.json
-# TIPS = iShares TIPS Bond ETF (TIP) with its fee added back: the TIPS market itself, as bought fee-free at TreasuryDirect
+# TIPS = one 10-year TIPS bought at TreasuryDirect (no fee) in May 2007, rolled into a new 10-year TIPS at maturity
 ALTS = ('VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00), 'TIP': (-0.15, 0.15)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 
@@ -239,8 +239,9 @@ def fetch_cpi() -> dict[str, float]:
 def fetch_treasury(today: dt.date) -> dict:
     """Daily par yields from the U.S. Treasury for last year and this year.
 
-    Returns {'rates': latest 3-month and 10-year yields, 'daily': {date: 3-month yield, %}}."""
-    daily, latest = {}, None
+    Returns {'rates': latest 3-month and 10-year yields, 'daily': {date: 3-month yield, %},
+             'real': {date: [5-, 7-, 10-, 20-year real (TIPS) yields, %]}}."""
+    daily, real, latest = {}, {}, None
     for year in (today.year - 1, today.year):
         url = ('https://home.treasury.gov/resource-center/data-chart-center/interest-rates/'
                f'daily-treasury-rates.csv/{year}/all?type=daily_treasury_yield_curve'
@@ -253,12 +254,68 @@ def fetch_treasury(today: dt.date) -> dict:
             daily[d] = float(r['3 Mo'])
             if latest is None or d > latest[0]:
                 latest = (d, r)
-    if latest is None:
+        url = ('https://home.treasury.gov/resource-center/data-chart-center/interest-rates/'
+               f'daily-treasury-rates.csv/{year}/all?type=daily_treasury_real_yield_curve'
+               f'&field_tdr_date_value={year}&page&_format=csv')
+        text = http_get(url, {'Accept': 'text/csv'}).decode('utf-8-sig')
+        for r in csv.DictReader(io.StringIO(text)):
+            r = {k.strip().upper(): (v or '').strip() for k, v in r.items() if k}
+            cols = [r.get(c, '') for c in ('5 YR', '7 YR', '10 YR', '20 YR')]
+            if r.get('DATE') and all(cols):
+                real[dt.datetime.strptime(r['DATE'], '%m/%d/%Y').date().isoformat()] = [float(c) for c in cols]
+    if latest is None or not real:
         raise RuntimeError('Treasury: no rows')
     d, best = latest
     return {'rates': {'tbill': float(best['3 Mo']), 'tbillLabel': '3-month Treasury yield', 'ust10': float(best['10 Yr']),
                       'date': d, 'source': 'U.S. Treasury daily par yield curve'},
-            'daily': daily}
+            'daily': daily, 'real': real}
+
+
+# ---- 10-year TIPS bought at TreasuryDirect (no fee), valued at market prices each month like BND
+def real_yield(row: list, rem: float) -> float:
+    """Real yield for `rem` years left, from a [5, 7, 10, 20]-year row; under 5 years uses the 5-year yield."""
+    pts = list(zip((5, 7, 10, 20), row))
+    if rem <= 5:
+        return row[0]
+    for (a, ya), (b, yb) in zip(pts, pts[1:]):
+        if rem <= b:
+            return ya + (yb - ya) * (rem - a) / (b - a)
+    return row[3]
+
+
+def bond_price(c: float, y: float, rem: float) -> float:
+    """Price per 100 of a semiannual-coupon bond (coupon c%, yield y%) with `rem` years left."""
+    n, i = rem * 2, y / 200
+    if n <= 0:
+        return 100.0
+    if abs(i) < 1e-12:
+        return 100 + c / 2 * n
+    return c / 2 * (1 - (1 + i) ** -n) / i + 100 * (1 + i) ** -n
+
+
+def tips_coupon(y: float) -> float:
+    """TIPS coupons are set in 1/8 steps at or below the auction yield, never below 0.125%."""
+    return max(0.125, math.floor(y * 8 + 1e-9) / 8)
+
+
+def tips_month(bond: dict, mk: str, row: list, cpi: dict, frac: float = 1.0) -> tuple[float, float]:
+    """(growth factor, end price) for month `mk` of the held TIPS; frac < 1 for a month in progress.
+
+    Growth = (price + a month of interest) / last month's price, times the inflation adjustment:
+    the TIPS reference CPI lags 3 months, so a month adds CPI(m-2) / CPI(m-3) (interpolated by day)."""
+    rem = month_diff(mk, bond['maturity']) / 12 + (1 - frac) / 12
+    p = 100.0 if rem <= 1e-9 else bond_price(bond['coupon'], real_yield(row, rem), rem)
+    a, b = add_months(mk, -3), add_months(mk, -2)
+    if a not in cpi or b not in cpi:
+        raise RuntimeError(f'CPI for {b} is needed for the TIPS inflation adjustment')
+    infl = 1 + frac * (cpi[b] / cpi[a] - 1)
+    return (p + bond['coupon'] / 12 * frac) / bond['price'] * infl, p
+
+
+def tips_roll(mk: str, row: list) -> dict:
+    """A new 10-year TIPS bought at the end of month `mk` at that day's 10-year real yield."""
+    c = tips_coupon(row[2])
+    return {'coupon': c, 'maturity': add_months(mk, 120), 'price': bond_price(c, row[2], 10), 'bought': mk}
 
 
 def tbill_factor(daily: dict, first: dt.date, last: dt.date) -> float:
@@ -425,11 +482,24 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             if not lo < r < hi:
                 raise RuntimeError(f'{t} return for {mk} looks wrong ({r:+.2%}); not updating')
 
-    # 3-month T-bills: from the Treasury's daily yields (kept in state so a Treasury outage only delays)
+    try:   # CPI first: the TIPS inflation adjustment needs it
+        cpi = fetch_cpi()
+        for k, v in cpi.items():
+            state['cpi'][k] = v
+            if k in state.get('cpi_interpolated', []):
+                state['cpi_interpolated'].remove(k)
+        srcs['cpi'] = {'ok': True, 'through': max(cpi)}
+    except Exception as e:
+        srcs['cpi'] = {'ok': False, 'error': str(e)[:200], 'through': max(state['cpi'])}
+        notes.append('CPI not refreshed: ' + str(e)[:200])
+
+    # 3-month T-bills and TIPS: from the Treasury's daily yields (kept in state so a Treasury outage only delays)
     tb_daily = dict(state.get('tbill_daily', {}))
+    real_daily = dict(state.get('tips_real', {}))
     try:
         tr = fetch_treasury(now_et.date())
         tb_daily.update(tr['daily'])
+        real_daily.update(tr['real'])
         if tr['rates']['date'] >= state['rates'].get('date', ''):
             state['rates'] = tr['rates']
         srcs['treasury'] = {'ok': True, 'through': tr['rates']['date']}
@@ -446,14 +516,28 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     if last_yield < rows['BND'][-2]['date']:   # each day accrues at the yield published before it
         notes.append(f'T-bills this month use the last published 3-month yield ({last_yield})')
     keep_from = (iso_date(asof) - dt.timedelta(days=120)).isoformat()
-    # Fee-free TIPS: TIP's total return plus its expense ratio, accrued day by day
-    tip_fee = state['altFees']['TIP']['er'] / 100
+    state['tbill_daily'] = {d: v for d, v in sorted(tb_daily.items()) if d >= keep_from}
+
+    # 10-year TIPS from TreasuryDirect: month-end market value from the real yield curve, plus inflation
+    real_dates = sorted(real_daily)
+    bond = dict(state['tips_bond'])
     factors['TIPS'] = {}
     for mk in months_new:
-        days = iso_date(asof).day if mk == months_new[-1] else days_in_month(mk)
-        f, close, d = factors['TIP'][mk]
-        factors['TIPS'][mk] = (f * (1 + tip_fee) ** (days / 365.25), close, d)
-    state['tbill_daily'] = {d: v for d, v in sorted(tb_daily.items()) if d >= keep_from}
+        last = mk == months_new[-1]
+        end = iso_date(asof) if last else month_last_day(mk)
+        upto = [d for d in real_dates if d <= end.isoformat()]
+        if not upto or (not last and upto[-1] < factors['BND'][mk][2]):
+            raise RuntimeError(f'TIPS real yields for {mk} are not available yet; not finalizing the month')
+        row = real_daily[upto[-1]]
+        f, p = tips_month(bond, mk, row, state['cpi'], end.day / days_in_month(mk) if last else 1.0)
+        factors['TIPS'][mk] = (f, None, end.isoformat())
+        if not last:
+            bond['price'] = p
+            if month_diff(mk, bond['maturity']) <= 0:   # matured: roll into a new 10-year TIPS
+                bond = tips_roll(mk, row)
+                notes.append(f'TIPS matured in {mk}; rolled into a new 10-year TIPS at {row[2]:.2f}% (coupon {bond["coupon"]}%)')
+    new_tips_bond = bond
+    state['tips_real'] = {d: v for d, v in sorted(real_daily.items()) if d >= keep_from}
 
     # How the fresh numbers compare with what the page showed for the same month
     prov = state['provisional']
@@ -478,6 +562,7 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     state['provisional'] = {'month': cur, 'asOf': asof, **{t: ppm(factors[t][cur][0]) for t in SERIES},
                             'bndClose': factors['BND'][cur][1]}
     status['finalizedThisRun'] = finalized
+    state['tips_bond'] = new_tips_bond
 
     dists = dict((d, a) for d, a in state['dists'])
     for r in rows['BND']:
@@ -489,17 +574,6 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     keep_from = (iso_date(asof) - dt.timedelta(days=3 * 366)).isoformat()
     state['dists'] = sorted([d, a] for d, a in dists.items() if d >= keep_from)
     update_range(state, rows['BND'], asof)
-
-    try:
-        cpi = fetch_cpi()
-        for k, v in cpi.items():
-            state['cpi'][k] = v
-            if k in state.get('cpi_interpolated', []):
-                state['cpi_interpolated'].remove(k)
-        srcs['cpi'] = {'ok': True, 'through': max(cpi)}
-    except Exception as e:
-        srcs['cpi'] = {'ok': False, 'error': str(e)[:200], 'through': max(state['cpi'])}
-        notes.append('CPI not refreshed: ' + str(e)[:200])
 
     vg, vg_errors = fetch_vanguard()
     if vg:

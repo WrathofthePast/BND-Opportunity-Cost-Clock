@@ -1,7 +1,7 @@
 # BND Opportunity Cost Clock
 
 A real-time clock, in the style of usdebtclock.org, showing what holders of the Vanguard Total Bond
-Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (VOO), Nvidia stock (NVDA), fee-free TIPS, 3-month T-bills and
+Market ETF (BND) have given up compared with US stocks (VTI), the S&P 500 (VOO), Nvidia stock (NVDA), 10-year TIPS from TreasuryDirect, 3-month T-bills and
 inflation (CPI).
 
 **Live site:** https://delightfullygrateful.com
@@ -10,8 +10,8 @@ inflation (CPI).
 
 | What | When | Where it comes from |
 |---|---|---|
-| Prices, distributions and splits for BND, VTI, VOO, NVDA, TIP | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
-| 3-month and 10-year Treasury yields (the 3-month yield is also the T-bill comparison) | Every weekday | U.S. Treasury daily par yield curve |
+| Prices, distributions and splits for BND, VTI, VOO, NVDA | Every weekday after the close | Tiingo (Yahoo Finance as backup) |
+| Treasury yields: 3-month and 10-year, and the real (TIPS) yield curve, which drive the T-bill and TIPS comparisons | Every weekday | U.S. Treasury daily par yield curve |
 | CPI | When the BLS publishes it (mid-month) | BLS API |
 | BND net assets, SEC yield, duration, unrealized gains | When Vanguard's site allows automated reads | Vanguard fund page (best effort) |
 | Year-end net assets, 2007 to 2025 | Already in the data | Vanguard annual reports (SEC Form N-CSR) |
@@ -77,9 +77,11 @@ Or ask Claude to refresh them.
   (their 1-, 3-, 5- and 10-year returns agree with Vanguard's to within 0.01 percentage point).
   Later months come from daily
   closes and distributions.
-- TIPS are the whole market of inflation-protected Treasuries, as bought fee-free at
-  TreasuryDirect: the iShares TIPS Bond ETF (TIP) with its 0.18% fee added back day by day.
-  Valued at market prices, like BND.
+- TIPS are one 10-year TIPS bought at TreasuryDirect (no fee) at the end of May 2007 (2.5% coupon),
+  held to maturity in May 2017 and rolled into a new 10-year TIPS (0.375%, maturing May 2027), and so
+  on. Principal follows CPI-U with the 3-month lag, interest is reinvested, and each month-end the
+  bond is valued at the Treasury's real yield for its remaining term (5-year yield under 5 years).
+  `history/tips_from_treasury.py` rebuilds the history.
 - T-bills are fee-free 3-month Treasury bills, as bought at TreasuryDirect and rolled over: each
   calendar day earns 1/365 of the latest 3-month Treasury yield. (Until October 2026 the clock used
   the BIL ETF, whose fee and shorter maturity made it trail the bills by 0.2 to 0.35 points a year.
