@@ -335,8 +335,8 @@ dialog.info::backdrop { background: var(--scrim); }
     </button>
     <div class="board cols-5" id="heroStats">
       <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="30">&mdash;</span><span class="sub" id="sRate"></span></button>
-      <button type="button" class="cell" data-info="rate"><span class="lab">Per day</span><span class="val red" id="vRateDay" data-max="30">&mdash;</span><span class="sub" id="sRateDay"></span></button>
-      <button type="button" class="cell" data-info="rate"><span class="lab">Per year</span><span class="val red" id="vRateYear" data-max="30">&mdash;</span><span class="sub" id="sRateYear"></span></button>
+      <button type="button" class="cell" data-info="rateDay"><span class="lab">Per day</span><span class="val red" id="vRateDay" data-max="30">&mdash;</span><span class="sub" id="sRateDay"></span></button>
+      <button type="button" class="cell" data-info="rateYear"><span class="lab">Per year</span><span class="val red" id="vRateYear" data-max="30">&mdash;</span><span class="sub" id="sRateYear"></span></button>
       <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="30">&mdash;</span><span class="sub" id="sPerShare"></span></button>
       <button type="button" class="cell" data-info="perTenK"><span class="lab">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="30">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
     </div>
@@ -1159,11 +1159,14 @@ var BNDClock = (function () {
         return { title: $('heroLabel').textContent, value: usd(total), tone: tone(total), paras: paras,
           formula: 'Sum over months of: dollars at work in BND × (' + AL.tick + ' return − BND return). Dollars at work = previous month-end net assets + half of the month’s new money. Not compounded.' };
       }
-      case 'rate':
-        return { title: 'How fast the clock runs', value: usd(rate, Math.abs(rate) < 100) + ' a second', tone: tone(rate),
-          paras: [paceText + ', BND’s estimated ' + words(aum) + ' ' + (rate >= 0 ? 'fall behind' : 'pull ahead') + ' by ' + words(Math.abs(rate * SPYR)) + ' a year, ' + words(Math.abs(rate * 86400)) + ' a day.',
+      case 'rate': case 'rateDay': case 'rateYear': {
+        // the card leads with the number that was clicked
+        var per = id === 'rateDay' ? ['Per day', compact(rate * 86400) + ' a day'] : id === 'rateYear' ? ['Per year', compact(rate * SPYR) + ' a year'] : ['Per second', usd(rate, Math.abs(rate) < 100) + ' a second'];
+        return { title: 'How fast the clock runs: ' + per[0].toLowerCase(), value: per[1], tone: tone(rate),
+          paras: [paceText + ', BND’s estimated ' + words(aum) + ' ' + (rate >= 0 ? 'fall behind' : 'pull ahead') + ' by ' + words(Math.abs(rate * SPYR)) + ' a year, ' + words(Math.abs(rate * 86400)) + ' a day, or ' + usd(Math.abs(rate), Math.abs(rate) < 100) + ' a second.',
             'Assets are assumed to keep growing at the recent pace of new money, about ' + words(flowMonth) + ' a month. Market moves after the ' + ASOF_SHORT + ' close are not included until the next data update. Pick a different window at the top to change the pace.'],
           formula: 'Rate = net assets × (' + AL.tick + ' annual return − BND annual return) ÷ 31,557,600 seconds in a year. Annual returns are measured over the window ending ' + LASTFULL + '.' };
+      }
       case 'perShare': {
         var shs = E.sharesAt(t);
         return { title: 'Per BND share outstanding', value: usd(total / shs, true), tone: tone(total),
