@@ -1,0 +1,1354 @@
+<title>BND Opportunity Cost Clock</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A real-time clock of what holders of Vanguard Total Bond Market ETF (BND) have given up compared with US stocks, the S&amp;P 500, T-bills and inflation.">
+<meta property="og:title" content="BND Opportunity Cost Clock">
+<meta property="og:description" content="What holders of Vanguard Total Bond Market ETF (BND) have given up versus US stocks, the S&amp;P 500, T-bills and inflation, ticking in real time and updated every weekday.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23000'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23ff4436' font-family='monospace' font-weight='bold'%3E%24%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&amp;family=Barlow:wght@400;500;600&amp;display=swap">
+<style>
+:root {
+  /* Layout: a trading-floor LED board. A black field ruled into placards: one giant red counter up top,
+     dense grids of smaller counters below, and the settings in one row above everything they scope. */
+  --board: #000000;        /* the board itself */
+  --panel: #13110e;        /* raised surfaces: dialog, tooltip */
+  --rule: #2a2622;         /* hairline rules between placards */
+  --rule-hi: #4b453d;      /* borders on controls and the LED window */
+  --ink: #ece6da;          /* primary text, neutral numbers */
+  --label: #a69f92;        /* placard labels, secondary text */
+  --muted: #7d766b;        /* tertiary text */
+  --red: #ff4436;          /* LED red: money given up */
+  --blue: #4db8ff;         /* LED blue: BND came out ahead */
+  --amber: #ffb22e;        /* LED amber: fund and market readings, controls */
+  --red-glow: rgba(255, 68, 54, .42);
+  --blue-glow: rgba(77, 184, 255, .36);
+  --amber-glow: rgba(255, 178, 46, .30);
+  --wash: rgba(255, 178, 46, .07);
+  --dot: rgba(255, 255, 255, .055);
+  --shade: rgba(0, 0, 0, .9);
+  --scrim: rgba(0, 0, 0, .74);
+
+  --font-led: "Doto", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-label: "Barlow Semi Condensed", "Arial Narrow", "Roboto Condensed", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { background: var(--board); }
+body {
+  margin: 0;
+  background: var(--board);
+  color: var(--ink);
+  font: 400 16px/1.5 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--amber); text-underline-offset: 3px; }
+a:hover { color: var(--ink); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 22px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* ---------- masthead ---------- */
+.masthead { display: flex; flex-direction: column; gap: 22px; }
+.top {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 14px 32px; padding-bottom: 18px; border-bottom: 1px solid var(--rule);
+}
+.brand { min-width: 0; max-width: 760px; }
+.brand h1 {
+  margin: 0;
+  font: 700 clamp(27px, 3.7vw, 44px)/1.02 var(--font-label);
+  letter-spacing: .035em; text-transform: uppercase; text-wrap: balance;
+}
+.brand p { margin: 10px 0 0; color: var(--label); max-width: 62ch; }
+.now { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.now-time {
+  font: 900 19px/1 var(--font-led); color: var(--amber);
+  text-shadow: 0 0 .4em var(--amber-glow); white-space: nowrap;
+}
+.now-data { font: 500 13.5px/1.3 var(--font-label); color: var(--muted); letter-spacing: .03em; }
+.now-data.stale { color: var(--amber); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 18px 36px; align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ctl-label, .fld label, .lab, .tbl th {
+  font: 600 12.5px/1.25 var(--font-label); letter-spacing: .08em; text-transform: uppercase; color: var(--label);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  min-height: 40px; padding: 9px 13px;
+  background: transparent; border: 1px solid var(--rule-hi); border-radius: 2px;
+  color: var(--label); font: 600 15px/1.1 var(--font-label); letter-spacing: .03em;
+  cursor: pointer;
+}
+.chip small { font: 500 12px/1 var(--font-label); color: var(--muted); letter-spacing: .05em; }
+.chip:hover { color: var(--ink); background: var(--wash); }
+.chip[aria-checked="true"], .chip[aria-pressed="true"] {
+  background: var(--amber); border-color: var(--amber); color: var(--board);
+}
+.chip[aria-checked="true"] small, .chip[aria-pressed="true"] small { color: var(--board); opacity: .7; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 20px; font: 500 13.5px/1.3 var(--font-label); color: var(--label); letter-spacing: .02em; }
+.key span { display: inline-flex; align-items: center; gap: 8px; }
+.key i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.key .k-red { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
+.key .k-blue { background: var(--blue); box-shadow: 0 0 6px var(--blue-glow); }
+
+/* ---------- LED readouts ---------- */
+.val {
+  display: block; white-space: nowrap; min-width: 0;
+  font: 900 30px/1 var(--font-led); letter-spacing: .01em;
+  color: var(--ink);
+}
+.red { color: var(--red); text-shadow: 0 0 .32em var(--red-glow); }
+.blue { color: var(--blue); text-shadow: 0 0 .32em var(--blue-glow); }
+.amber { color: var(--amber); text-shadow: 0 0 .32em var(--amber-glow); }
+.ink { color: var(--ink); text-shadow: none; }
+
+/* ---------- hero ---------- */
+.hero { display: flex; flex-direction: column; gap: 16px; }
+.hero-main {
+  display: flex; flex-direction: column; gap: 14px; width: 100%;
+  background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
+}
+.hero-label {
+  font: 700 clamp(14px, 1.55vw, 18px)/1.3 var(--font-label);
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink); text-wrap: balance;
+}
+.led-window {
+  display: block; position: relative;
+  padding: clamp(16px, 2.6vw, 30px) clamp(12px, 2.2vw, 30px);
+  border: 1px solid var(--rule-hi);
+  background-color: var(--board);
+  background-image: radial-gradient(circle at center, var(--dot) 0 1.1px, transparent 1.7px);
+  background-size: 7px 7px;
+  box-shadow: inset 0 0 48px var(--shade);
+}
+.hero-main:hover .led-window { border-color: var(--amber); }
+.hero-num { font-size: 104px; line-height: 1; }
+.hero-note { margin: 0; color: var(--label); max-width: 76ch; font-size: 15.5px; }
+
+/* ---------- boards of placards ---------- */
+.panel { display: flex; flex-direction: column; gap: 14px; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 28px; }
+.panel-head h2 {
+  margin: 0; font: 700 19px/1.2 var(--font-label); letter-spacing: .07em; text-transform: uppercase;
+}
+.panel-head p { margin: 0; color: var(--label); font-size: 15px; max-width: 70ch; }
+.board { display: grid; border-top: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+.board > * { border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.cell {
+  /* label, number and note sit on rows shared across the whole board row (subgrid), so numbers line up */
+  display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 9px; align-content: start;
+  grid-template-columns: minmax(0, 1fr);   /* keep long numbers from widening the placard, so they shrink to fit */
+  min-width: 0; padding: 15px 16px 16px;
+  background: transparent; border-top: 0; border-left: 0; border-radius: 0;
+  text-align: left; cursor: pointer;
+}
+.cell:hover { background: var(--wash); }
+.cell:focus-visible { outline-offset: -3px; }
+.cell .sub { font: 500 13.5px/1.35 var(--font-label); color: var(--muted); letter-spacing: .02em; }
+.cell.static { cursor: default; }
+.cell.static:hover { background: transparent; }
+
+/* ---------- $10k table ---------- */
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--rule); }
+table.tbl { width: 100%; border-collapse: collapse; min-width: 600px; }
+.tbl th { text-align: right; padding: 13px 16px; border-bottom: 1px solid var(--rule); font-weight: 600; }
+.tbl td { padding: 12px 16px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl td:first-child { font: 600 15px/1.25 var(--font-label); color: var(--ink); letter-spacing: .02em; }
+.tbl td .val { display: inline-block; font-size: 22px; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl.plain td { font: 500 15px/1.3 var(--font-label); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* ---------- time machine ---------- */
+.years { display: flex; flex-wrap: wrap; gap: 6px; }
+.years .chip { min-width: 54px; justify-content: center; }
+.years .chip.proj { border-style: dashed; }
+.tm-stamp { font: 900 18px/1.2 var(--font-led); color: var(--amber); text-shadow: 0 0 .4em var(--amber-glow); }
+.chart-box { border: 1px solid var(--rule); padding: 16px 14px 10px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.chart-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: baseline; }
+.chart-title { margin: 0; font: 700 15px/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 500 13.5px/1.3 var(--font-label); color: var(--label); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.legend .l-red { background: var(--red); }
+.legend .l-blue { background: var(--blue); }
+#chart { width: 100%; }
+#chart svg { display: block; overflow: visible; }
+.c-grid { stroke: var(--rule); stroke-width: 1; shape-rendering: crispEdges; }
+.c-zero { stroke: var(--rule-hi); stroke-width: 1; shape-rendering: crispEdges; }
+.c-tick { fill: var(--label); font: 500 12px var(--font-label); }
+.c-tick.sel { fill: var(--amber); font-weight: 700; }
+.c-bar.pos { fill: var(--red); }
+.c-bar.neg { fill: var(--blue); }
+.c-sel { fill: var(--wash); }
+.c-hit { fill: transparent; cursor: pointer; }
+.c-hit:focus { outline: none; }
+.c-slot:focus-visible .c-hitframe, .c-slot:hover .c-hitframe { stroke: var(--rule-hi); }
+.c-hitframe { fill: none; stroke: transparent; stroke-width: 1; }
+.tip {
+  position: absolute; z-index: 5; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--rule-hi);
+  padding: 9px 11px; min-width: 170px;
+  font: 500 13px/1.4 var(--font-label); color: var(--label); white-space: nowrap;
+}
+.tip strong { display: block; font: 900 19px/1.15 var(--font-led); color: var(--ink); margin-bottom: 3px; }
+details.tview summary { cursor: pointer; color: var(--amber); font: 600 14.5px var(--font-label); letter-spacing: .04em; padding: 4px 0; }
+details.tview[open] summary { margin-bottom: 10px; }
+
+/* ---------- my clock ---------- */
+.my-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 16px; }
+.fld { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.fld input, .fld select {
+  width: 100%; min-height: 46px; padding: 10px 12px;
+  background: var(--board); color: var(--ink);
+  border: 1px solid var(--rule-hi); border-radius: 2px;
+  font: 500 17px/1.2 var(--font-body);
+}
+.fld input:focus-visible, .fld select:focus-visible { outline: 2px solid var(--amber); outline-offset: 0; border-color: var(--amber); }
+.example-note { margin: 0; font: 500 14px/1.4 var(--font-label); color: var(--amber); letter-spacing: .02em; }
+
+/* ---------- method ---------- */
+.method { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 36px; }
+.method h3 { margin: 0 0 6px; font: 700 15px/1.3 var(--font-label); letter-spacing: .06em; text-transform: uppercase; }
+.method p { margin: 0 0 18px; color: var(--label); max-width: 68ch; }
+.method p:last-child { margin-bottom: 0; }
+.sources { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.sources li { padding-left: 14px; border-left: 2px solid var(--rule-hi); color: var(--label); font-size: 15px; }
+.sources b { color: var(--ink); font-weight: 600; }
+footer { color: var(--muted); font-size: 14px; border-top: 1px solid var(--rule); padding-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+footer p { margin: 0; max-width: 90ch; }
+
+/* ---------- info dialog ---------- */
+dialog.info {
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--rule-hi); border-radius: 2px;
+  padding: 0; width: calc(100% - 32px); max-width: 620px;
+}
+dialog.info::backdrop { background: var(--scrim); }
+.info-in { padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 14px; }
+.info-in h3 { margin: 0; font: 700 15.5px/1.3 var(--font-label); letter-spacing: .07em; text-transform: uppercase; color: var(--label); }
+.info-val { font: 900 34px/1.05 var(--font-led); white-space: nowrap; overflow-x: auto; }
+.info-body p { margin: 0 0 10px; font-size: 15.5px; }
+.info-body p:last-child { margin-bottom: 0; }
+.info-body .formula {
+  font: 500 14.5px/1.45 var(--font-label); color: var(--label); letter-spacing: .01em;
+  border-left: 2px solid var(--amber); padding-left: 12px;
+}
+.info-close { align-self: flex-end; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1000px) {
+  .cols-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cols-5 > :first-child { grid-column: 1 / -1; }
+  .cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .my-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .method { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  .wrap { gap: 40px; }
+  .cols-5, .cols-4 { grid-template-columns: minmax(0, 1fr); }
+  .cols-5 > :first-child { grid-column: auto; }
+  .my-form { grid-template-columns: minmax(0, 1fr); }
+  .now { align-items: flex-start; text-align: left; }
+  .now-time { white-space: normal; font-size: 16px; line-height: 1.25; }
+  .info-in { padding: 18px 16px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+</style>
+
+<div class="wrap">
+  <div class="masthead">
+    <header class="top">
+      <div class="brand">
+        <h1>BND Opportunity Cost Clock</h1>
+        <p>What holders of Vanguard Total Bond Market ETF (BND) have given up compared with other places the same money could have been, counted in real time.</p>
+      </div>
+      <div class="now">
+        <div class="now-time" id="nowTime" aria-label="Current time, US Eastern">--</div>
+        <div class="now-data" id="dataNote">Loading the latest data</div>
+      </div>
+    </header>
+
+    <section class="controls" aria-label="Clock settings">
+      <div class="ctl">
+        <span class="ctl-label" id="lblAlt">Compare BND with</span>
+        <div class="chips" role="radiogroup" aria-labelledby="lblAlt" id="altGroup">
+          <button type="button" class="chip" role="radio" data-alt="VTI">US stocks <small>VTI</small></button>
+          <button type="button" class="chip" role="radio" data-alt="SPY">S&amp;P 500 <small>SPY</small></button>
+          <button type="button" class="chip" role="radio" data-alt="BIL">T-bills <small>BIL</small></button>
+          <button type="button" class="chip" role="radio" data-alt="CPI">Inflation <small>CPI</small></button>
+        </div>
+      </div>
+      <div class="ctl">
+        <span class="ctl-label" id="lblBasis">Tick at the return gap of the</span>
+        <div class="chips" role="radiogroup" aria-labelledby="lblBasis" id="basisGroup">
+          <button type="button" class="chip" role="radio" data-basis="1Y">Last year</button>
+          <button type="button" class="chip" role="radio" data-basis="3Y">3 years</button>
+          <button type="button" class="chip" role="radio" data-basis="5Y">5 years</button>
+          <button type="button" class="chip" role="radio" data-basis="10Y">10 years</button>
+          <button type="button" class="chip" role="radio" data-basis="SI">Since 2007</button>
+        </div>
+      </div>
+      <div class="key" aria-label="Color key">
+        <span><i class="k-red"></i>Red: the alternative did better</span>
+        <span><i class="k-blue"></i>Blue, negative: BND did better</span>
+      </div>
+    </section>
+  </div>
+
+  <section class="hero" aria-label="Headline clock">
+    <button type="button" class="hero-main" data-info="total">
+      <span class="hero-label" id="heroLabel">Opportunity cost to all BND holders since 2007, vs. US stocks (VTI)</span>
+      <span class="led-window"><span class="val hero-num red" id="vTotal" data-max="104" data-min="20">&mdash;</span></span>
+    </button>
+    <div class="board cols-5" id="heroStats">
+      <button type="button" class="cell" data-info="rate"><span class="lab">Per second</span><span class="val red" id="vRateSec" data-max="30">&mdash;</span><span class="sub" id="sRate"></span></button>
+      <button type="button" class="cell" data-info="rate"><span class="lab">Per day</span><span class="val red" id="vRateDay" data-max="30">&mdash;</span><span class="sub" id="sRateDay"></span></button>
+      <button type="button" class="cell" data-info="rate"><span class="lab">Per year</span><span class="val red" id="vRateYear" data-max="30">&mdash;</span><span class="sub" id="sRateYear"></span></button>
+      <button type="button" class="cell" data-info="perShare"><span class="lab">Per BND share outstanding</span><span class="val red" id="vPerShare" data-max="30">&mdash;</span><span class="sub" id="sPerShare"></span></button>
+      <button type="button" class="cell" data-info="perTenK"><span class="lab">Per $10,000 invested in May 2007</span><span class="val red" id="vPerTenK" data-max="30">&mdash;</span><span class="sub" id="sPerTenK"></span></button>
+    </div>
+    <p class="hero-note" id="heroNote">Every month since BND launched, the clock compares what its holders' money earned with what the same dollars would have earned in the alternative, and adds up the difference. Select any number to see the math.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="hPeriods">
+    <div class="panel-head">
+      <h2 id="hPeriods">By period</h2>
+      <p id="pPeriods">Opportunity cost to all BND holders, same method, counting only the months in each window.</p>
+    </div>
+    <div class="board cols-5">
+      <button type="button" class="cell" data-info="p:ytd"><span class="lab" id="lP_ytd">This year so far</span><span class="val red" id="vP_ytd" data-max="30">&mdash;</span><span class="sub" id="sP_ytd"></span></button>
+      <button type="button" class="cell" data-info="p:m12"><span class="lab">Last 12 months</span><span class="val red" id="vP_m12" data-max="30">&mdash;</span><span class="sub" id="sP_m12"></span></button>
+      <button type="button" class="cell" data-info="p:peak"><span class="lab" id="lP_peak">Since the peak</span><span class="val red" id="vP_peak" data-max="30">&mdash;</span><span class="sub" id="sP_peak"></span></button>
+      <button type="button" class="cell" data-info="p:y5"><span class="lab">Last 5 years</span><span class="val red" id="vP_y5" data-max="30">&mdash;</span><span class="sub" id="sP_y5"></span></button>
+      <button type="button" class="cell" data-info="p:y10"><span class="lab">Last 10 years</span><span class="val red" id="vP_y10" data-max="30">&mdash;</span><span class="sub" id="sP_y10"></span></button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hFund">
+    <div class="panel-head">
+      <h2 id="hFund">BND right now</h2>
+      <p>Fund figures from Vanguard and the latest close, carried forward to this second where they keep moving.</p>
+    </div>
+    <div class="board cols-4">
+      <button type="button" class="cell" data-info="aum"><span class="lab">Total net assets (est.)</span><span class="val amber" id="vAum" data-max="30">&mdash;</span><span class="sub" id="sAum"></span></button>
+      <button type="button" class="cell" data-info="shares"><span class="lab">Shares outstanding (est.)</span><span class="val amber" id="vShares" data-max="30">&mdash;</span><span class="sub" id="sShares"></span></button>
+      <button type="button" class="cell" data-info="income"><span class="lab" id="lIncome">Income paid to holders this year (est.)</span><span class="val amber" id="vIncome" data-max="30">&mdash;</span><span class="sub" id="sIncome"></span></button>
+      <button type="button" class="cell" data-info="fees"><span class="lab" id="lFees">Fees paid to Vanguard this year (est.)</span><span class="val amber" id="vFees" data-max="30">&mdash;</span><span class="sub" id="sFees"></span></button>
+      <button type="button" class="cell" data-info="price"><span class="lab">Market price</span><span class="val amber" id="vPrice" data-max="30">&mdash;</span><span class="sub" id="sPrice"></span></button>
+      <button type="button" class="cell" data-info="sec"><span class="lab">SEC yield</span><span class="val amber" id="vSec" data-max="30">&mdash;</span><span class="sub" id="sSec"></span></button>
+      <button type="button" class="cell" data-info="unreal"><span class="lab" id="lUnreal">Unrealized losses inside the fund</span><span class="val red" id="vUnreal" data-max="30">&mdash;</span><span class="sub" id="sUnreal"></span></button>
+      <button type="button" class="cell" data-info="ratehit"><span class="lab">Hit from a 1-point rise in rates</span><span class="val red" id="vRateHit" data-max="30">&mdash;</span><span class="sub" id="sRateHit"></span></button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hRates">
+    <div class="panel-head">
+      <h2 id="hRates">Rates and inflation</h2>
+      <p>What cash pays, what longer bonds pay, and what prices are doing.</p>
+    </div>
+    <div class="board cols-5">
+      <button type="button" class="cell" data-info="tbill"><span class="lab" id="lTbill">3-month Treasury yield</span><span class="val amber" id="vTbill" data-max="30">&mdash;</span><span class="sub" id="sTbill"></span></button>
+      <button type="button" class="cell" data-info="t10"><span class="lab">10-year Treasury yield</span><span class="val amber" id="vT10" data-max="30">&mdash;</span><span class="sub" id="sT10"></span></button>
+      <button type="button" class="cell" data-info="cpi"><span class="lab">Inflation, 12 months</span><span class="val amber" id="vCpi" data-max="30">&mdash;</span><span class="sub" id="sCpi"></span></button>
+      <button type="button" class="cell" data-info="spreadT"><span class="lab">BND yield over T-bills</span><span class="val amber" id="vSpreadT" data-max="30">&mdash;</span><span class="sub" id="sSpreadT"></span></button>
+      <button type="button" class="cell" data-info="spreadCPI"><span class="lab">BND yield over inflation</span><span class="val amber" id="vSpreadC" data-max="30">&mdash;</span><span class="sub" id="sSpreadC"></span></button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hPeak">
+    <div class="panel-head">
+      <h2 id="hPeak">Below the peak</h2>
+      <p id="pPeak"></p>
+    </div>
+    <div class="board cols-5">
+      <button type="button" class="cell" data-info="under"><span class="lab">Time below the peak</span><span class="val red" id="vUnder" data-max="30">&mdash;</span><span class="sub" id="sUnder"></span></button>
+      <button type="button" class="cell" data-info="trdd"><span class="lab">Total return vs. peak</span><span class="val red" id="vTrdd" data-max="30">&mdash;</span><span class="sub">Distributions reinvested</span></button>
+      <button type="button" class="cell" data-info="realdd"><span class="lab">After inflation</span><span class="val red" id="vRealdd" data-max="30">&mdash;</span><span class="sub" id="sRealdd"></span></button>
+      <button type="button" class="cell" data-info="pdd"><span class="lab">Price vs. record close</span><span class="val red" id="vPdd" data-max="30">&mdash;</span><span class="sub" id="sPdd"></span></button>
+      <button type="button" class="cell" data-info="closest"><span class="lab">Closest it came back</span><span class="val amber" id="vClosest" data-max="30">&mdash;</span><span class="sub" id="sClosest"></span></button>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hTenK">
+    <div class="panel-head">
+      <h2 id="hTenK">Growth of $10,000</h2>
+      <p id="pTenK">A single $10,000 investment at the start of each window, distributions reinvested.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl" id="tenkTable">
+        <thead><tr><th scope="col">Invested at the start of</th><th scope="col">Now in BND</th><th scope="col" id="thAlt">Now in VTI</th><th scope="col">Difference</th></tr></thead>
+        <tbody>
+          <tr><td id="rowL_si">May 2007 (first month-end)</td><td><span class="val ink" id="tk_si_b">&mdash;</span></td><td><span class="val ink" id="tk_si_x">&mdash;</span></td><td><span class="val red" id="tk_si_d">&mdash;</span></td></tr>
+          <tr><td id="rowL_y10">10 years ago</td><td><span class="val ink" id="tk_y10_b">&mdash;</span></td><td><span class="val ink" id="tk_y10_x">&mdash;</span></td><td><span class="val red" id="tk_y10_d">&mdash;</span></td></tr>
+          <tr><td id="rowL_peak">The peak</td><td><span class="val ink" id="tk_peak_b">&mdash;</span></td><td><span class="val ink" id="tk_peak_x">&mdash;</span></td><td><span class="val red" id="tk_peak_d">&mdash;</span></td></tr>
+          <tr><td id="rowL_y5">5 years ago</td><td><span class="val ink" id="tk_y5_b">&mdash;</span></td><td><span class="val ink" id="tk_y5_x">&mdash;</span></td><td><span class="val red" id="tk_y5_d">&mdash;</span></td></tr>
+          <tr><td id="rowL_m12">12 months ago</td><td><span class="val ink" id="tk_m12_b">&mdash;</span></td><td><span class="val ink" id="tk_m12_x">&mdash;</span></td><td><span class="val red" id="tk_m12_d">&mdash;</span></td></tr>
+          <tr><td id="rowL_ytd">This January</td><td><span class="val ink" id="tk_ytd_b">&mdash;</span></td><td><span class="val ink" id="tk_ytd_x">&mdash;</span></td><td><span class="val red" id="tk_ytd_d">&mdash;</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" id="time-machine" aria-labelledby="hTM">
+    <div class="panel-head">
+      <h2 id="hTM">Time machine</h2>
+      <p id="pTM">Step through BND's history. Each year shows the clock as it stood on December 31.</p>
+    </div>
+    <div class="years" role="radiogroup" aria-label="Year" id="yearGroup"></div>
+    <div class="tm-stamp" id="tmStamp" aria-live="polite"></div>
+    <div class="board cols-4" id="tmBoard">
+      <div class="cell static"><span class="lab" id="tmL1">Opportunity cost since 2007</span><span class="val red" id="tmV1" data-max="30">&mdash;</span><span class="sub" id="tmS1"></span></div>
+      <div class="cell static"><span class="lab" id="tmL2">Opportunity cost during the year</span><span class="val red" id="tmV2" data-max="30">&mdash;</span><span class="sub" id="tmS2"></span></div>
+      <div class="cell static"><span class="lab" id="tmL3">BND return</span><span class="val amber" id="tmV3" data-max="30">&mdash;</span><span class="sub" id="tmS3"></span></div>
+      <div class="cell static"><span class="lab" id="tmL4">VTI return</span><span class="val amber" id="tmV4" data-max="30">&mdash;</span><span class="sub" id="tmS4"></span></div>
+      <div class="cell static"><span class="lab" id="tmL5">BND net assets</span><span class="val amber" id="tmV5" data-max="30">&mdash;</span><span class="sub" id="tmS5"></span></div>
+      <div class="cell static"><span class="lab" id="tmL6">$10,000 from May 2007, in BND</span><span class="val ink" id="tmV6" data-max="30">&mdash;</span><span class="sub" id="tmS6"></span></div>
+      <div class="cell static"><span class="lab" id="tmL7">$10,000 from May 2007, in VTI</span><span class="val ink" id="tmV7" data-max="30">&mdash;</span><span class="sub" id="tmS7"></span></div>
+      <div class="cell static"><span class="lab" id="tmL8">Inflation</span><span class="val amber" id="tmV8" data-max="30">&mdash;</span><span class="sub" id="tmS8"></span></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-top">
+        <h3 class="chart-title" id="chartTitle">Opportunity cost to all BND holders, by year</h3>
+        <div class="legend"><span><i class="l-red"></i>Cost: the alternative did better</span><span><i class="l-blue"></i>BND did better</span></div>
+      </div>
+      <div id="chart"></div>
+      <div class="tip" id="tip" hidden></div>
+      <details class="tview">
+        <summary>Show the numbers as a table</summary>
+        <div class="tbl-wrap">
+          <table class="tbl plain" id="yearTable">
+            <thead><tr><th scope="col">Year</th><th scope="col">BND return</th><th scope="col" id="ytAlt">VTI return</th><th scope="col">BND net assets</th><th scope="col">Cost that year</th><th scope="col">Cost since 2007</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel" id="my-clock" aria-labelledby="hMy">
+    <div class="panel-head">
+      <h2 id="hMy">My BND clock</h2>
+      <p>Enter your own BND purchase to watch your personal opportunity cost tick.</p>
+    </div>
+    <form class="my-form" id="myForm" novalidate>
+      <div class="fld"><label for="myAmount">Amount invested ($)</label><input id="myAmount" type="number" inputmode="decimal" min="0" step="any" value="10000"></div>
+      <div class="fld"><label for="myStart">Invested at the start of</label><select id="myStart"></select></div>
+      <div class="fld"><label for="myMonthly">Added each month ($)</label><input id="myMonthly" type="number" inputmode="decimal" min="0" step="any" value="0"></div>
+      <div class="fld"><label for="myAlt">Compare with</label>
+        <select id="myAlt"><option value="VTI">US stocks (VTI)</option><option value="SPY">S&amp;P 500 (SPY)</option><option value="BIL">T-bills (BIL)</option><option value="CPI">Inflation (CPI)</option></select></div>
+    </form>
+    <p class="example-note" id="myExample">Showing an example: $10,000 put into BND at the start of January 2021. Enter your own figures above.</p>
+    <div class="board cols-5">
+      <div class="cell static"><span class="lab">Your BND balance</span><span class="val amber" id="vMyB" data-max="30">&mdash;</span><span class="sub" id="sMyB"></span></div>
+      <div class="cell static"><span class="lab" id="lMyX">Same money in VTI</span><span class="val ink" id="vMyX" data-max="30">&mdash;</span><span class="sub" id="sMyX"></span></div>
+      <div class="cell static"><span class="lab" id="lMyD">Your opportunity cost</span><span class="val red" id="vMyD" data-max="30">&mdash;</span><span class="sub" id="sMyD"></span></div>
+      <div class="cell static"><span class="lab">You put in</span><span class="val ink" id="vMyPut" data-max="30">&mdash;</span><span class="sub" id="sMyPut"></span></div>
+      <div class="cell static"><span class="lab" id="lMyDay">Change in the gap per day</span><span class="val red" id="vMyDay" data-max="30">&mdash;</span><span class="sub" id="sMyDay"></span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="method" aria-labelledby="hMethod">
+    <div class="panel-head"><h2 id="hMethod">How the clock works</h2></div>
+    <div class="method">
+      <div>
+        <h3>Monthly returns</h3>
+        <p id="mPrices">Everything starts from monthly total returns since BND's first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and BIL, and the consumer price index for inflation.</p>
+        <h3>Dollars at work</h3>
+        <p id="mAssets">BND's net assets come from Vanguard's annual reports for each December since 2007 and from Vanguard's fund page, filled in month by month from shares outstanding and the market price.</p>
+        <h3>Opportunity cost</h3>
+        <p>For each month: dollars at work × (the alternative's return − BND's return). The clock adds up those monthly differences without compounding them, so it counts what was missed each month, not what the missed gains might have earned later.</p>
+        <h3>Between data updates</h3>
+        <p id="mUpdates">The data refreshes automatically each weekday evening after the market closes. Between refreshes the counters move at a steady pace, the way a debt clock runs between Treasury reports.</p>
+        <h3>What it leaves out</h3>
+        <p>Hindsight comparisons ignore risk. US stocks fell 37% in 2008 while BND gained 6.9%, and people hold bonds for stability, income and diversification, not to beat stocks. Taxes, trading costs and personal timing also differ. This page is information, not investment advice.</p>
+      </div>
+      <div>
+        <h3>Sources</h3>
+        <ul class="sources">
+          <li><b>Tiingo.</b> Daily closing prices and distributions for BND, VTI, SPY and BIL, refreshed each weekday. <a href="https://www.tiingo.com/" target="_blank" rel="noopener">tiingo.com</a></li>
+          <li><b>Vanguard, BND fund page.</b> Net assets, SEC yield, portfolio characteristics and unrealized gains; its official returns calibrate the history through September 2026. <a href="https://investor.vanguard.com/investment-products/etfs/profile/bnd" target="_blank" rel="noopener">investor.vanguard.com</a></li>
+          <li><b>SEC EDGAR, Vanguard Bond Index Funds annual reports (Form N-CSR).</b> Year-end net assets of BND's ETF share class, 2007 to 2025. <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000794105&amp;type=N-CSR" target="_blank" rel="noopener">sec.gov</a></li>
+          <li><b>U.S. Treasury.</b> Daily par yield curve rates: 3-month and 10-year yields. <a href="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve" target="_blank" rel="noopener">home.treasury.gov</a></li>
+          <li><b>U.S. Bureau of Labor Statistics, CPI-U.</b> U.S. city average, all items, not seasonally adjusted (CUUR0000SA0). October 2025 was never published because of the 2025 shutdown and is interpolated; months not yet published are estimated at the latest 12-month pace. <a href="https://www.bls.gov/cpi/" target="_blank" rel="noopener">bls.gov</a></li>
+          <li><b>Yahoo Finance.</b> Monthly price history from June 2007 through October 2026, and backup daily prices. <a href="https://finance.yahoo.com/quote/BND/history/" target="_blank" rel="noopener">finance.yahoo.com</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p id="footNote">An independent page built from public data. Not affiliated with or endorsed by Vanguard, State Street, Tiingo, Yahoo or the U.S. government. Not investment advice.</p>
+    <p>Code and data: <a href="https://github.com/WrathofthePast/BND-Opportunity-Cost-Clock" target="_blank" rel="noopener">github.com/WrathofthePast/BND-Opportunity-Cost-Clock</a></p>
+  </footer>
+</div>
+
+<dialog class="info" id="info" aria-labelledby="infoTitle">
+  <div class="info-in">
+    <h3 id="infoTitle">Details</h3>
+    <div class="info-val" id="infoVal"></div>
+    <div class="info-body" id="infoBody"></div>
+    <button type="button" class="chip info-close" id="infoClose">Close</button>
+  </div>
+</dialog>
+
+<script type="application/json" id="clock-data">__CLOCK_DATA__</script>
+
+<script id="engine">
+/* BND Opportunity Cost Clock: calculation engine (no DOM access). */
+var BNDClock = (function () {
+  'use strict';
+  var SPYR = 365.25 * 86400;   // seconds in an average year
+  var SPM = SPYR / 12;         // seconds in an average month
+  var ALTS = ['VTI', 'SPY', 'BIL', 'CPI'];
+
+  function ix(y, m) { return (y - 2007) * 12 + (m - 6); }   // month index: 0 = June 2007
+  function prod(arr, a, b) { var p = 1; for (var j = a; j < b; j++) p *= arr[j]; return p; }
+  function sum(arr, a, b) { var s = 0; for (var j = a; j < b; j++) s += arr[j]; return s; }
+
+  function build(D) {
+    var N = D.n, NF = N - 1, k, j;   // the last month is the current, unfinished one
+    var f = {};
+    for (k in D.r) f[k] = D.r[k].map(function (v) { return 1 + v / 1e6; });
+    var aum = D.aum.map(function (v) { return v * 1e6; });       // month-end net assets, May 2007 .. now
+    var sh = D.shares.map(function (v) { return v * 1e6; });     // month-end shares outstanding
+    var inv = [];                                                // dollars at work in each month
+    for (j = 0; j < N; j++) inv.push(aum[j] + 0.5 * (aum[j + 1] - aum[j] * f.BND[j]));
+    var gap = {};
+    ALTS.forEach(function (a) { gap[a] = inv.map(function (v, i) { return v * (f[a][i] - f.BND[i]); }); });
+
+    var WIN = { '1Y': 12, '3Y': 36, '5Y': 60, '10Y': 120, 'SI': NF };   // windows end at the last full month
+    var G = {};
+    for (k in f) {
+      G[k] = {};
+      for (var b in WIN) G[k][b] = Math.pow(prod(f[k], NF - WIN[b], NF), 12 / WIN[b]) - 1;
+    }
+    var PERIOD = { si: 0, y10: N - 120, peak: D.peakIdx, y5: N - 60, m12: N - 12, ytd: D.ytdIdx };
+
+    var YEAR = +D.asOf.slice(0, 4);
+    var T0 = D.asOfMs, YE = Date.UTC(YEAR + 1, 0, 1, 5, 0, 0);   // midnight ET, Jan 1 of next year
+    var AUM0 = aum[N], SH0 = sh[N];
+    var PACE_SEC = D.pace.perMonth / SPM;                         // new shares per second
+    var FLOW_SEC = PACE_SEC * D.fund.price;                       // new dollars per second
+
+    function dts(t) { return Math.max(0, (t - T0) / 1000); }
+    function integAum(d) { return AUM0 * d + 0.5 * FLOW_SEC * d * d; }  // ∫ assets dt over d seconds
+    function aumAt(t) { return AUM0 + FLOW_SEC * dts(t); }
+    function sharesAt(t) { return SH0 + PACE_SEC * dts(t); }
+    function gapRate(a, b) { return G[a][b] - G.BND[b]; }
+
+    var OC0 = {};
+    ALTS.forEach(function (a) { OC0[a] = {}; for (var p in PERIOD) OC0[a][p] = sum(gap[a], PERIOD[p], N); });
+
+    function ocAt(a, b, p, t) {
+      var tt = p === 'ytd' ? Math.min(t, YE) : t;
+      return OC0[a][p] + gapRate(a, b) / SPYR * integAum(dts(tt));
+    }
+    function ratePerSec(a, b, t) { return gapRate(a, b) / SPYR * aumAt(t); }
+    function cumRet(k2, p) { return prod(f[k2], PERIOD[p], N) - 1; }
+    function tenKAt(a, b, p, t) {
+      var yrs = dts(t) / SPYR;
+      var x = 10000 * prod(f[a], PERIOD[p], N) * Math.pow(1 + G[a][b], yrs);
+      var bb = 10000 * prod(f.BND, PERIOD[p], N) * Math.pow(1 + G.BND[b], yrs);
+      return { x: x, b: bb, diff: x - bb };
+    }
+
+    var accruedPre = (T0 - D.income.accrualFromMs) / 1000;
+    function incomeAt(t) {
+      var d = dts(Math.min(t, YE));
+      return D.income.paidYtd + D.income.lastDist / SPM * (SH0 * (accruedPre + d) + 0.5 * PACE_SEC * d * d);
+    }
+    var ER = D.fund.expenseRatio / 100;
+    function feesAt(t) { return D.fees.ytd + ER / SPYR * integAum(dts(Math.min(t, YE))); }
+
+    function years(a) {
+      var rows = [];
+      for (var y = 2007; y <= YEAR; y++) {
+        var i0 = y === 2007 ? 0 : ix(y, 1), i1 = y === YEAR ? N : ix(y, 12) + 1;
+        var r = {};
+        ['BND', a, 'BIL', 'CPI'].forEach(function (k2) { r[k2] = prod(f[k2], i0, i1) - 1; });
+        rows.push({ year: y, ret: r, oc: sum(gap[a], i0, i1), cum: sum(gap[a], 0, i1), aumEnd: aum[i1],
+                    tenKB: 10000 * prod(f.BND, 0, i1), tenKX: 10000 * prod(f[a], 0, i1), partial: y === YEAR });
+      }
+      return rows;
+    }
+    function projYear(a, b, Y) {
+      var s = Date.UTC(Y, 0, 1, 5), e = Date.UTC(Y + 1, 0, 1, 5);
+      var cumE = ocAt(a, b, 'si', e), cumS = ocAt(a, b, 'si', s), tk = tenKAt(a, b, 'si', e);
+      var r = { BND: G.BND[b], BIL: G.BIL[b], CPI: G.CPI[b] }; r[a] = G[a][b];
+      return { year: Y, projected: true, ret: r, oc: cumE - cumS, cum: cumE, aumEnd: aumAt(e), tenKB: tk.b, tenKX: tk.x };
+    }
+
+    function personal(A, start, C, a) {
+      var vb = A, vx = A, put = A;
+      for (var i = start; i < N; i++) {
+        vb *= f.BND[i]; vx *= f[a][i];
+        if (C > 0 && i < N - 1) { vb += C; vx += C; put += C; }   // added at each full month-end
+      }
+      return { vb: vb, vx: vx, put: put };
+    }
+    function personalAt(p, a, b, t) {
+      var yrs = dts(t) / SPYR;
+      return { vb: p.vb * Math.pow(1 + G.BND[b], yrs), vx: p.vx * Math.pow(1 + G[a][b], yrs) };
+    }
+
+    return {
+      N: N, YEAR: YEAR, T0: T0, G: G, PERIOD: PERIOD, OC0: OC0, AUM0: AUM0, SH0: SH0, FLOW_SEC: FLOW_SEC,
+      aumAt: aumAt, sharesAt: sharesAt, gapRate: gapRate, ocAt: ocAt, ratePerSec: ratePerSec, cumRet: cumRet,
+      tenKAt: tenKAt, incomeAt: incomeAt, feesAt: feesAt, years: years, projYear: projYear,
+      personal: personal, personalAt: personalAt
+    };
+  }
+
+  return { build: build, SPYR: SPYR, ALTS: ALTS, ix: ix };
+})();
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var D = JSON.parse(document.getElementById('clock-data').textContent);
+  var SPYR = BNDClock.SPYR, ix = BNDClock.ix;
+  var E = BNDClock.build(D);
+  var F = D.fund, R = D.rates, PK = D.peak, YEAR = E.YEAR, T0 = E.T0;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var ALT = {
+    VTI: { tick: 'VTI', long: 'US stocks (VTI)', vs: 'US stocks (VTI)', inA: 'in VTI' },
+    SPY: { tick: 'SPY', long: 'the S&P 500 (SPY)', vs: 'the S&P 500 (SPY)', inA: 'in SPY' },
+    BIL: { tick: 'BIL', long: 'T-bills (BIL)', vs: 'T-bills (BIL)', inA: 'in T-bills (BIL)' },
+    CPI: { tick: 'CPI', long: 'inflation (CPI)', vs: 'inflation (CPI)', inA: 'growing with inflation' }
+  };
+  var BASIS = { '1Y': '1-year', '3Y': '3-year', '5Y': '5-year', '10Y': '10-year', 'SI': 'since-2007' };
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // ---------- dates ----------
+  function parts(s) { return [+s.slice(0, 4), +s.slice(5, 7), +s.slice(8, 10)]; }
+  function fmtDate(s) { var p = parts(s); return MON[p[1] - 1] + ' ' + p[2] + ', ' + p[0]; }    // Oct 21, 2026
+  function fmtShort(s) { var p = parts(s); return MON[p[1] - 1] + ' ' + p[2]; }                 // Oct 21
+  function monShort(k) { return MON[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4); }                // Aug 2020
+  function monLong(k) { return MONTHS[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4); }               // August 2020
+  function monthKey(i) { var y = 2007 + Math.floor((i + 5) / 12), m = (i + 5) % 12 + 1; return y + '-' + (m < 10 ? '0' : '') + m; }
+  function monthName(i) { return monLong(monthKey(i)); }
+  function monthStart(i) { var k = monthKey(i); return MON[+k.slice(5, 7) - 1] + ' 1, ' + k.slice(0, 4); }
+  function monthEnd(k) {
+    var y = +k.slice(0, 4), m = +k.slice(5, 7), d = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return MON[m - 1] + ' ' + d + ', ' + y;
+  }
+  var ASOF = fmtDate(D.asOf), ASOF_SHORT = fmtShort(D.asOf);
+  var LASTFULL = monthEnd(monthKey(E.N - 2));      // end of the last complete month
+  var PEAK_MONTH = PK.date.slice(0, 7);
+  var PROJ = [YEAR + 1, YEAR + 4];
+  var PERIODS = {
+    ytd: { label: YEAR + ' so far', from: 'Jan 1, ' + YEAR },
+    m12: { label: 'Last 12 months', from: monthStart(E.N - 12) },
+    peak: { label: 'Since the ' + monShort(PEAK_MONTH) + ' peak', from: monthStart(D.peakIdx) },
+    y5: { label: 'Last 5 years', from: monthStart(E.N - 60) },
+    y10: { label: 'Last 10 years', from: monthStart(E.N - 120) },
+    si: { label: 'Since May 2007', from: 'the May 31, 2007 close' }
+  };
+
+  var DEFAULT_MY = { amount: 10000, start: ix(2021, 1), monthly: 0, custom: false };
+  var state = { alt: 'VTI', basis: '10Y', year: YEAR, my: { amount: 10000, start: ix(2021, 1), monthly: 0, custom: false } };
+  try {
+    var saved = JSON.parse(localStorage.getItem('bnd-clock-v1') || 'null');
+    if (saved) {
+      if (ALT[saved.alt]) state.alt = saved.alt;
+      if (BASIS[saved.basis]) state.basis = saved.basis;
+      if (saved.my && saved.my.custom && isFinite(saved.my.amount) && saved.my.amount >= 0 &&
+          isFinite(saved.my.start) && saved.my.start >= 0 && saved.my.start < E.N && isFinite(saved.my.monthly) && saved.my.monthly >= 0) {
+        state.my = { amount: +saved.my.amount, start: +saved.my.start, monthly: +saved.my.monthly, custom: true };
+      }
+    }
+  } catch (e) { /* storage unavailable: use defaults */ }
+  function save() {
+    try { localStorage.setItem('bnd-clock-v1', JSON.stringify({ alt: state.alt, basis: state.basis, my: state.my })); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- formatting ----------
+  var nf0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  var nf2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var MINUS = '−';
+  function usd(x, dec) {
+    var a = Math.abs(x);
+    var s = dec ? nf2.format(a) : nf0.format(Math.round(a));
+    if (!dec && s === '0') return '$0';
+    return (x < 0 ? MINUS : '') + '$' + s;
+  }
+  function compact(x) {
+    var a = Math.abs(x), s;
+    if (a >= 1e12) s = (a / 1e12).toFixed(2) + 'T';
+    else if (a >= 1e9) s = (a / 1e9).toFixed(1) + 'B';
+    else if (a >= 1e6) s = (a / 1e6).toFixed(1) + 'M';
+    else if (a >= 100) s = nf0.format(Math.round(a));
+    else s = a.toFixed(2);
+    return (x < 0 ? MINUS : '') + '$' + s;
+  }
+  function words(x) {
+    var a = Math.abs(x), s;
+    if (a >= 1e9) s = '$' + (a / 1e9).toFixed(1) + ' billion';
+    else if (a >= 1e6) s = '$' + (a / 1e6).toFixed(1) + ' million';
+    else s = '$' + nf0.format(Math.round(a));
+    return (x < 0 ? MINUS : '') + s;
+  }
+  function pct(x, d) {
+    var dd = d == null ? 1 : d, v = Math.abs(x * 100).toFixed(dd);
+    if (+v === 0) return (0).toFixed(dd) + '%';
+    return (x > 0 ? '+' : MINUS) + v + '%';
+  }
+  function signed(x, d) { var v = Math.abs(x).toFixed(d); return (+v === 0 ? '' : x > 0 ? '+' : MINUS) + v; }
+  function tone(x) { return x > 0 ? 'red' : x < 0 ? 'blue' : 'ink'; }
+  function setTone(el, cls) {
+    if (!el || el._tone === cls) return;
+    el.classList.remove('red', 'blue', 'amber', 'ink');
+    el.classList.add(cls);
+    el._tone = cls;
+  }
+  function $(id) { return document.getElementById(id); }
+  function setText(id, text) { var el = $(id); if (el) el.textContent = text; }
+
+  // ---------- fitting LED numbers to their placards ----------
+  var fitPending = [];
+  function fit(el) {
+    var max = +el.getAttribute('data-max') || 30, min = +el.getAttribute('data-min') || 13;
+    el.style.fontSize = max + 'px';
+    var w = el.scrollWidth, avail = el.clientWidth;
+    if (w > avail && avail > 0) el.style.fontSize = Math.max(min, Math.floor(max * avail / w * 0.985 * 10) / 10) + 'px';
+  }
+  function fitAll() { var els = document.querySelectorAll('.val[data-max]'); for (var i = 0; i < els.length; i++) fit(els[i]); }
+
+  // ---------- ticking registry ----------
+  var tickers = [];
+  function reg(id, valueFn, formatFn, toneFn) {
+    var el = $(id);
+    if (el) tickers.push({ el: el, v: valueFn, fmt: formatFn, tone: toneFn, last: null });
+  }
+  function updateTicker(tk, t) {
+    var v = tk.v(t), s = tk.fmt(v);
+    if (s !== tk.last) {
+      var lenChanged = tk.last === null || s.length !== tk.last.length;
+      tk.el.textContent = s;
+      tk.last = s;
+      if (lenChanged && tk.el.hasAttribute('data-max')) fitPending.push(tk.el);
+    }
+    if (tk.tone) setTone(tk.el, tk.tone(v));
+  }
+
+  var fmtNow = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  function underwater(t) {
+    var s = Math.max(0, Math.floor((t - PK.ms) / 1000));
+    var d = Math.floor(s / 86400); s -= d * 86400;
+    var h = Math.floor(s / 3600); s -= h * 3600;
+    var m = Math.floor(s / 60); s -= m * 60;
+    function p2(n) { return (n < 10 ? '0' : '') + n; }
+    return nf0.format(d) + 'd ' + p2(h) + ':' + p2(m) + ':' + p2(s);
+  }
+
+  // ---------- registrations ----------
+  function A() { return state.alt; }
+  function B() { return state.basis; }
+  reg('vTotal', function (t) { return E.ocAt(A(), B(), 'si', t); }, function (v) { return usd(v); }, tone);
+  reg('vRateSec', function (t) { return E.ratePerSec(A(), B(), t); }, function (v) { return Math.abs(v) < 100 ? usd(v, true) : usd(v); }, tone);
+  reg('vRateDay', function (t) { return E.ratePerSec(A(), B(), t) * 86400; }, compact, tone);
+  reg('vRateYear', function (t) { return E.ratePerSec(A(), B(), t) * SPYR; }, compact, tone);
+  reg('vPerShare', function (t) { return E.ocAt(A(), B(), 'si', t) / E.sharesAt(t); }, function (v) { return usd(v, true); }, tone);
+  reg('vPerTenK', function (t) { return E.tenKAt(A(), B(), 'si', t).diff; }, function (v) { return usd(v, true); }, tone);
+  ['ytd', 'm12', 'peak', 'y5', 'y10'].forEach(function (p) {
+    reg('vP_' + p, function (t) { return E.ocAt(A(), B(), p, t); }, function (v) { return usd(v); }, tone);
+  });
+  reg('vAum', function (t) { return E.aumAt(t); }, function (v) { return usd(v); });
+  reg('vShares', function (t) { return E.sharesAt(t); }, function (v) { return nf0.format(Math.round(v)); });
+  reg('vIncome', function (t) { return E.incomeAt(t); }, function (v) { return usd(v); });
+  reg('vFees', function (t) { return E.feesAt(t); }, function (v) { return usd(v); });
+  reg('vRateHit', function (t) { return -E.aumAt(t) * F.duration / 100; }, function (v) { return compact(v); });
+  reg('vUnder', function (t) { return t; }, underwater);
+  ['si', 'y10', 'peak', 'y5', 'm12', 'ytd'].forEach(function (p) {
+    reg('tk_' + p + '_b', function (t) { return E.tenKAt(A(), B(), p, t).b; }, function (v) { return usd(v, true); });
+    reg('tk_' + p + '_x', function (t) { return E.tenKAt(A(), B(), p, t).x; }, function (v) { return usd(v, true); });
+    reg('tk_' + p + '_d', function (t) { return E.tenKAt(A(), B(), p, t).diff; }, function (v) { return usd(v, true); }, tone);
+  });
+  var myBase = null;
+  function myNow(t) { return E.personalAt(myBase, A(), B(), t); }
+  reg('vMyB', function (t) { return myNow(t).vb; }, function (v) { return usd(v, true); });
+  reg('vMyX', function (t) { return myNow(t).vx; }, function (v) { return usd(v, true); });
+  reg('vMyD', function (t) { var n = myNow(t); return n.vx - n.vb; }, function (v) { return usd(v, true); }, tone);
+  reg('vMyDay', function (t) {
+    var n = myNow(t);
+    return (n.vx * Math.log(1 + E.G[A()][B()]) - n.vb * Math.log(1 + E.G.BND[B()])) / 365.25;
+  }, function (v) { return usd(v, true); }, tone);
+
+  // ---------- figures that come straight from the data file ----------
+  function renderStatic() {
+    var trYtd = E.cumRet('BND', 'ytd');
+    setText('lP_ytd', PERIODS.ytd.label);
+    setText('lP_peak', PERIODS.peak.label);
+
+    setText('sAum', 'Vanguard: ' + compact(F.tna * 1e6) + ' on ' + fmtShort(F.tnaDate));
+    setText('sShares', '+' + (D.pace.perMonth / 1e6).toFixed(1) + 'M a month, ' + monShort(D.pace.from) + ' to ' + monShort(D.pace.to));
+    setText('lIncome', 'Income paid to holders in ' + YEAR + ' (est.)');
+    setText('sIncome', '$' + F.ttmDist.toFixed(2) + ' a share over 12 months');
+    setText('lFees', 'Fees paid to Vanguard in ' + YEAR + ' (est.)');
+    setText('sFees', F.expenseRatio.toFixed(2) + '% expense ratio');
+    setText('vPrice', '$' + F.price.toFixed(2));
+    setText('sPrice', (F.nav && F.navDate === D.asOf ? 'NAV $' + F.nav.toFixed(2) + ' at the ' : '') + ASOF_SHORT + ' close' +
+      (trYtd === trYtd ? '; ' + pct(trYtd) + ' total return in ' + YEAR : ''));
+    setText('vSec', F.secYield.toFixed(2) + '%');
+    setText('sSec', '30-day, as of ' + fmtShort(F.secYieldDate));
+    var unreal = F.tna * 1e6 * F.unrealizedPct / 100;
+    setText('lUnreal', unreal < 0 ? 'Unrealized losses inside the fund' : 'Unrealized gains inside the fund');
+    setText('vUnreal', compact(Math.abs(unreal)));
+    setTone($('vUnreal'), unreal < 0 ? 'red' : 'amber');
+    setText('sUnreal', Math.abs(F.unrealizedPct).toFixed(2) + '% of NAV on ' + fmtShort(F.unrealizedDate));
+    setText('sRateHit', MINUS + F.duration.toFixed(1) + '% at a ' + F.duration.toFixed(1) + '-year duration');
+
+    var cpiPct = D.cpi.yoy * 100;
+    setText('lTbill', R.tbillLabel);
+    setText('vTbill', R.tbill.toFixed(2) + '%');
+    setText('sTbill', fmtShort(R.date));
+    setText('vT10', R.ust10.toFixed(2) + '%');
+    setText('sT10', fmtShort(R.date));
+    setText('vCpi', cpiPct.toFixed(2) + '%');
+    setText('sCpi', 'CPI-U, 12 months to ' + monShort(D.cpi.month));
+    setText('vSpreadT', signed(F.secYield - R.tbill, 2) + ' pts');
+    setText('sSpreadT', F.secYield.toFixed(2) + '% vs ' + R.tbill.toFixed(2) + '%');
+    setText('vSpreadC', signed(F.secYield - cpiPct, 2) + ' pts');
+    setText('sSpreadC', F.secYield.toFixed(2) + '% vs ' + cpiPct.toFixed(2) + '%');
+
+    var below = PK.gap < 0;
+    setText('hPeak', below ? 'Below the ' + monLong(PEAK_MONTH) + ' peak' : 'At a new high');
+    setText('pPeak', below
+      ? 'BND’s total return, distributions included, topped out on ' + fmtDate(PK.date) + ' and has not been back since.'
+      : 'BND’s total return, distributions included, set a new high on ' + fmtDate(PK.date) + '.');
+    setText('sUnder', 'Since the ' + fmtDate(PK.date) + ' close');
+    setText('vTrdd', pct(PK.gap));
+    setTone($('vTrdd'), below ? 'red' : 'amber');
+    setText('vRealdd', pct(PK.real));
+    setTone($('vRealdd'), PK.real < 0 ? 'red' : 'amber');
+    setText('sRealdd', 'Prices up ' + (PK.cpiSince * 100).toFixed(1) + '% since ' + monShort(PEAK_MONTH));
+    var pdd = F.price / PK.priceHigh - 1;
+    setText('vPdd', pct(pdd));
+    setTone($('vPdd'), pdd < 0 ? 'red' : 'amber');
+    setText('sPdd', '$' + PK.priceHigh.toFixed(2) + ' on ' + fmtDate(PK.priceHighDate));
+    setText('vClosest', PK.closestDate ? pct(PK.closestGap) : '—');
+    setText('sClosest', PK.closestDate ? fmtDate(PK.closestDate) : 'At the high now');
+
+    setText('rowL_y10', monthName(E.N - 120) + ' (10 years)');
+    setText('rowL_peak', monthName(D.peakIdx) + ' (the peak)');
+    setText('rowL_y5', monthName(E.N - 60) + ' (5 years)');
+    setText('rowL_m12', monthName(E.N - 12) + ' (12 months)');
+    setText('rowL_ytd', monthName(D.ytdIdx));
+
+    setText('pTM', 'Step through BND’s history. Each year shows the clock as it stood on December 31; ' + YEAR +
+      ' runs through ' + ASOF_SHORT + ', and ' + PROJ[0] + ' and ' + PROJ[1] + ' are projections at the pace set above.');
+    setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and BIL, and the consumer price index for inflation. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
+    setText('mAssets', 'BND’s net assets come from Vanguard’s annual reports for each December since 2007 and from Vanguard’s fund page (latest: ' +
+      words(F.tna * 1e6) + ' on ' + fmtDate(F.tnaDate) + '), filled in month by month from shares outstanding and the market price. The money at work in a month is the previous month-end’s assets plus half of that month’s new money.');
+    setText('mUpdates', 'The data refreshes automatically each weekday evening after the market closes; it currently runs through the ' + ASOF +
+      ' close. Between refreshes the counters move at a steady pace, the way a debt clock runs between Treasury reports: assets keep growing at the recent pace of new money, and the return gap is the annual gap over the window chosen at the top, measured through ' + LASTFULL + '.');
+    setText('footNote', 'An independent page built from public data, updated through the ' + ASOF + ' close. Not affiliated with or endorsed by Vanguard, State Street, Tiingo, Yahoo or the U.S. government. Not investment advice.');
+  }
+
+  // ---------- labels that depend on the settings ----------
+  function renderLabels() {
+    var a = state.alt, b = state.basis, AL = ALT[a], t = Date.now();
+    var total = E.ocAt(a, b, 'si', t);
+    var heroLabel;
+    if (a === 'CPI') heroLabel = total >= 0 ? 'Buying power all BND holders have lost to inflation since 2007' : 'How far all BND holders have beaten inflation since 2007 (negative = ahead)';
+    else heroLabel = total >= 0 ? 'Opportunity cost to all BND holders since 2007, vs. ' + AL.vs : 'All BND holders since 2007 vs. ' + AL.vs + ' (negative = BND ahead)';
+    setText('heroLabel', heroLabel);
+
+    var gx = E.G[a][b], gb = E.G.BND[b], gp = gx - gb;
+    setText('sRate', (gp >= 0 ? 'At the ' : 'BND gaining at the ') + BASIS[b] + ' gap: ' + AL.tick + ' ' + pct(gx, 2) + ' vs BND ' + pct(gb, 2) + ' a year');
+    setText('sRateDay', 'On ' + words(E.aumAt(t)) + ' of assets');
+    setText('sRateYear', 'Gap of ' + (gp >= 0 ? '' : MINUS) + Math.abs(gp * 100).toFixed(2) + ' points a year');
+    setText('sPerShare', 'Total ÷ ' + (E.sharesAt(t) / 1e9).toFixed(2) + ' billion shares');
+    var tk = E.tenKAt(a, b, 'si', t);
+    setText('sPerTenK', compact(tk.b) + ' in BND vs ' + compact(tk.x) + ' ' + AL.inA);
+
+    ['ytd', 'm12', 'peak', 'y5', 'y10'].forEach(function (p) {
+      setText('sP_' + p, 'BND ' + pct(E.cumRet('BND', p)) + ' vs ' + AL.tick + ' ' + pct(E.cumRet(a, p)));
+    });
+    setText('pPeriods', 'Opportunity cost to all BND holders vs. ' + AL.vs + ', counting only the months in each window. Underneath: each side’s total return over the window.');
+    setText('thAlt', a === 'CPI' ? 'Kept up with inflation' : 'Now ' + AL.inA);
+    setText('pTenK', 'A single $10,000 investment at the start of each window, distributions reinvested, compared with ' + AL.vs + '.');
+    setText('lMyX', a === 'CPI' ? 'Needed to keep up with inflation' : 'Same money ' + AL.inA);
+    $('myAlt').value = a;
+
+    var altBtns = document.querySelectorAll('#altGroup .chip');
+    for (var i = 0; i < altBtns.length; i++) {
+      var on = altBtns[i].getAttribute('data-alt') === a;
+      altBtns[i].setAttribute('aria-checked', on ? 'true' : 'false');
+      altBtns[i].tabIndex = on ? 0 : -1;
+    }
+    var bBtns = document.querySelectorAll('#basisGroup .chip');
+    for (var k = 0; k < bBtns.length; k++) {
+      var onb = bBtns[k].getAttribute('data-basis') === b;
+      bBtns[k].setAttribute('aria-checked', onb ? 'true' : 'false');
+      bBtns[k].tabIndex = onb ? 0 : -1;
+    }
+  }
+
+  // ---------- my clock ----------
+  function buildStartOptions() {
+    var sel = $('myStart'), frag = document.createDocumentFragment();
+    for (var i = E.N - 1; i >= 0; i--) {
+      var o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = monthName(i);
+      frag.appendChild(o);
+    }
+    sel.appendChild(frag);
+  }
+  function computeMy() {
+    var m = state.my;
+    myBase = E.personal(m.amount, m.start, m.monthly, state.alt);
+    var months = E.N - m.start;
+    setText('sMyB', 'From ' + monthName(m.start) + ', ' + (months === 1 ? '1 month' : months + ' months'));
+    $('vMyPut').textContent = usd(myBase.put, true);
+    setText('sMyPut', m.monthly > 0 ? usd(m.amount) + ' plus ' + usd(m.monthly) + ' a month' : 'One lump sum');
+    fitPending.push($('vMyPut'));
+    var gx = E.G[state.alt][state.basis], gb = E.G.BND[state.basis];
+    setText('sMyX', state.alt === 'CPI' ? 'Same buying power as you put in' : 'Distributions reinvested');
+    var diff = myBase.vx - myBase.vb, tick2 = ALT[state.alt].tick;
+    setText('lMyD', diff >= 0 ? 'Your opportunity cost' : 'BND is ahead by (negative)');
+    setText('sMyD', diff >= 0 ? (state.alt === 'CPI' ? 'Buying power lost to inflation' : 'What ' + tick2 + ' would have added')
+      : (state.alt === 'CPI' ? 'Negative: BND beat inflation' : 'Negative: BND did better than ' + tick2));
+    var pace = myBase.vx * Math.log(1 + gx) - myBase.vb * Math.log(1 + gb);
+    setText('sMyDay', (pace >= 0 ? 'Gap growing' : 'Gap shrinking') + ' at the ' + BASIS[state.basis] + ' pace: ' + tick2 + ' ' + pct(gx, 2) + ', BND ' + pct(gb, 2));
+    $('myExample').hidden = m.custom;
+  }
+  function readMy() {
+    var amt = parseFloat($('myAmount').value), start = parseInt($('myStart').value, 10), mon = parseFloat($('myMonthly').value);
+    if (!isFinite(amt) || amt < 0) amt = 0;
+    if (!isFinite(mon) || mon < 0) mon = 0;
+    if (!isFinite(start)) start = DEFAULT_MY.start;
+    state.my = { amount: amt, start: start, monthly: mon, custom: true };
+    computeMy(); save(); tick(true);
+  }
+
+  // ---------- time machine ----------
+  var yearRows = null;
+  function buildYears() {
+    var g = $('yearGroup'), list = [];
+    for (var y = 2007; y <= YEAR; y++) list.push(y);
+    list = list.concat(PROJ);
+    list.forEach(function (y) {
+      var bt = document.createElement('button');
+      bt.type = 'button';
+      bt.className = 'chip' + (y > YEAR ? ' proj' : '');
+      bt.setAttribute('role', 'radio');
+      bt.setAttribute('data-year', String(y));
+      bt.textContent = y === YEAR ? y + ' so far' : y > YEAR ? y + ' (proj.)' : String(y);
+      g.appendChild(bt);
+    });
+  }
+  function tmRow(Y) {
+    if (Y > YEAR) return E.projYear(state.alt, state.basis, Y);
+    for (var i = 0; i < yearRows.length; i++) if (yearRows[i].year === Y) return yearRows[i];
+    return yearRows[yearRows.length - 1];
+  }
+  function setCell(n, label, value, sub, cls) {
+    setText('tmL' + n, label);
+    var v = $('tmV' + n); v.textContent = value; setTone(v, cls); fitPending.push(v);
+    setText('tmS' + n, sub || '');
+  }
+  function renderTM() {
+    var a = state.alt, AL = ALT[a], Y = state.year, r = tmRow(Y);
+    var asOf = Y === YEAR ? ASOF : 'Dec 31, ' + Y;
+    setText('tmStamp', (r.projected ? 'Projected to ' : 'As of ') + asOf);
+    var yl = Y === YEAR ? YEAR + ' (to ' + ASOF_SHORT + ')' : String(Y);
+    var proj = r.projected ? 'Assumes the ' + BASIS[state.basis] + ' pace' : '';
+    setCell(1, 'Opportunity cost since 2007', usd(r.cum), r.projected ? proj : 'All BND holders vs. ' + AL.tick, tone(r.cum));
+    setCell(2, 'Opportunity cost in ' + yl, usd(r.oc), r.projected ? proj : (r.oc >= 0 ? AL.tick + ' did better' : 'BND did better'), tone(r.oc));
+    setCell(3, 'BND return in ' + yl, pct(r.ret.BND), r.projected ? 'Assumed annual rate' : (Y === 2007 ? 'From May 31, 2007' : 'Distributions reinvested'), 'amber');
+    setCell(4, (a === 'CPI' ? 'Inflation' : AL.tick + ' return') + ' in ' + yl, pct(r.ret[a]), r.projected ? 'Assumed annual rate' : (a === 'CPI' ? 'CPI-U' : 'Distributions reinvested'), 'amber');
+    setCell(5, 'BND net assets, ' + asOf, compact(r.aumEnd), r.projected ? 'Assumes the recent pace of new money' : (Y === YEAR ? 'Estimate' : 'Vanguard annual report'), 'amber');
+    setCell(6, '$10,000 from May 2007, in BND', usd(r.tenKB), pct(r.tenKB / 10000 - 1) + ' total', 'ink');
+    setCell(7, '$10,000 from May 2007, ' + (a === 'CPI' ? 'kept up with inflation' : AL.inA), usd(r.tenKX), pct(r.tenKX / 10000 - 1) + ' total', 'ink');
+    if (a === 'CPI') setCell(8, 'T-bills (BIL) in ' + yl, pct(r.ret.BIL), r.projected ? 'Assumed annual rate' : 'SPDR 1-3 Month T-Bill ETF', 'amber');
+    else setCell(8, 'Inflation in ' + yl, pct(r.ret.CPI), r.projected ? 'Assumed annual rate' : 'CPI-U', 'amber');
+    var btns = document.querySelectorAll('#yearGroup .chip');
+    for (var i = 0; i < btns.length; i++) {
+      var on = +btns[i].getAttribute('data-year') === Y;
+      btns[i].setAttribute('aria-checked', on ? 'true' : 'false');
+      btns[i].tabIndex = on ? 0 : -1;
+    }
+    drawChart();
+  }
+  function renderYearTable() {
+    var tb = $('yearTable').tBodies[0];
+    while (tb.firstChild) tb.removeChild(tb.firstChild);
+    setText('ytAlt', state.alt === 'CPI' ? 'Inflation' : ALT[state.alt].tick + ' return');
+    yearRows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      [r.partial ? YEAR + ' (to ' + ASOF_SHORT + ')' : String(r.year), pct(r.ret.BND), pct(r.ret[state.alt]), compact(r.aumEnd), compact(r.oc), compact(r.cum)].forEach(function (txt) {
+        var td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  // ---------- chart ----------
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function svgEl(name, attrs, parent) {
+    var el = document.createElementNS(SVGNS, name);
+    for (var k in attrs) el.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(el);
+    return el;
+  }
+  function niceStep(range, target) {
+    var raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+  }
+  function barPath(x, y0, y1, w, r) {
+    var h = Math.abs(y1 - y0); r = Math.min(r, h, w / 2);
+    if (h < 0.5) return 'M' + x + ' ' + y0 + 'h' + w;
+    if (y1 < y0) { // grows up, rounded top
+      return 'M' + x + ' ' + y0 + 'V' + (y1 + r) + 'Q' + x + ' ' + y1 + ' ' + (x + r) + ' ' + y1 + 'H' + (x + w - r) +
+        'Q' + (x + w) + ' ' + y1 + ' ' + (x + w) + ' ' + (y1 + r) + 'V' + y0 + 'Z';
+    }
+    return 'M' + x + ' ' + y0 + 'V' + (y1 - r) + 'Q' + x + ' ' + y1 + ' ' + (x + r) + ' ' + y1 + 'H' + (x + w - r) +
+      'Q' + (x + w) + ' ' + y1 + ' ' + (x + w) + ' ' + (y1 - r) + 'V' + y0 + 'Z';
+  }
+  function drawChart() {
+    var box = $('chart'), W = Math.max(280, box.clientWidth), H = W < 560 ? 230 : 280;
+    var m = { l: 50, r: 6, t: 12, b: 28 };
+    var pw = W - m.l - m.r, ph = H - m.t - m.b;
+    var rows = yearRows, n = rows.length;
+    var lo = 0, hi = 0;
+    rows.forEach(function (r) { lo = Math.min(lo, r.oc); hi = Math.max(hi, r.oc); });
+    var step = niceStep((hi - lo) || 1, 4);
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    function y(v) { return m.t + (hi - v) / (hi - lo) * ph; }
+    var tickDec = Math.abs(step / 1e9 - Math.round(step / 1e9)) < 1e-9 ? 0 : 1;
+    var slot = pw / n, bw = Math.min(24, Math.max(6, slot * 0.62));
+    while (box.firstChild) box.removeChild(box.firstChild);
+    var svg = svgEl('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, role: 'group', 'aria-label': $('chartTitle').textContent }, box);
+    for (var v = lo; v <= hi + step / 2; v += step) {
+      var yy = Math.round(y(v)) + 0.5;
+      svgEl('line', { x1: m.l, x2: W - m.r, y1: yy, y2: yy, 'class': Math.abs(v) < step / 1e6 ? 'c-zero' : 'c-grid' }, svg);
+      var lab = svgEl('text', { x: m.l - 8, y: yy + 4, 'text-anchor': 'end', 'class': 'c-tick' }, svg);
+      lab.textContent = Math.abs(v) < step / 1e6 ? '$0' : (v < 0 ? MINUS : '') + '$' + Math.abs(v / 1e9).toFixed(tickDec) + 'B';
+    }
+    var every = slot < 26 ? 3 : slot < 40 ? 2 : 1;
+    var forced = [n - 1];
+    rows.forEach(function (r, i) { if (r.year === state.year && i !== n - 1) forced.push(i); });
+    function labelAt(i) {
+      if (forced.indexOf(i) >= 0) return true;
+      if (i % every !== 0) return false;
+      for (var q = 0; q < forced.length; q++) if (Math.abs(forced[q] - i) < every) return false;
+      return true;
+    }
+    rows.forEach(function (r, i) {
+      var x0 = m.l + i * slot, cx = x0 + slot / 2, sel = r.year === state.year;
+      var g = svgEl('g', { 'class': 'c-slot', tabindex: '0', role: 'button',
+        'aria-label': (r.partial ? YEAR + ' through ' + ASOF_SHORT : r.year) + ': ' + (r.oc >= 0 ? 'opportunity cost ' : 'BND ahead by ') + words(Math.abs(r.oc)) }, svg);
+      if (sel) svgEl('rect', { x: x0 + 1, y: m.t, width: slot - 2, height: ph, 'class': 'c-sel' }, g);
+      svgEl('path', { d: barPath(cx - bw / 2, y(0), y(r.oc), bw, 4), 'class': 'c-bar ' + (r.oc >= 0 ? 'pos' : 'neg') }, g);
+      svgEl('rect', { x: x0 + 1, y: m.t, width: slot - 2, height: ph, 'class': 'c-hitframe' }, g);
+      svgEl('rect', { x: x0, y: m.t, width: slot, height: ph + m.b, 'class': 'c-hit' }, g);
+      if (labelAt(i)) {
+        var tx = svgEl('text', { x: cx, y: H - 8, 'text-anchor': 'middle', 'class': 'c-tick' + (sel ? ' sel' : '') }, g);
+        tx.textContent = '’' + String(r.year).slice(2);
+      }
+      function show() { showTip(r, cx, y(Math.max(r.oc, 0))); }
+      g.addEventListener('pointerenter', show);
+      g.addEventListener('focus', show);
+      g.addEventListener('pointerleave', hideTip);
+      g.addEventListener('blur', hideTip);
+      g.addEventListener('click', function () { selectYear(r.year); });
+      g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectYear(r.year); } });
+    });
+  }
+  function showTip(r, cx, ytop) {
+    var tip = $('tip'), a = state.alt;
+    while (tip.firstChild) tip.removeChild(tip.firstChild);
+    var st = document.createElement('strong'); st.textContent = usd(r.oc); tip.appendChild(st);
+    var l1 = document.createElement('div'); l1.textContent = (r.partial ? YEAR + ' through ' + ASOF_SHORT : String(r.year)) + ': ' + (r.oc >= 0 ? 'cost to BND holders' : 'BND ahead'); tip.appendChild(l1);
+    var l2 = document.createElement('div'); l2.textContent = 'BND ' + pct(r.ret.BND) + ' vs ' + ALT[a].tick + ' ' + pct(r.ret[a]); tip.appendChild(l2);
+    var l3 = document.createElement('div'); l3.textContent = 'Assets at year end ' + compact(r.aumEnd); tip.appendChild(l3);
+    tip.hidden = false;
+    var box = $('chart'), bx = box.offsetLeft, by = box.offsetTop;
+    var tw = tip.offsetWidth, th = tip.offsetHeight, pw = box.parentElement.clientWidth;
+    var left = Math.min(Math.max(bx + cx - tw / 2, 4), pw - tw - 4);
+    var top = Math.max(by + ytop - th - 10, 4);
+    tip.style.left = left + 'px'; tip.style.top = top + 'px';
+  }
+  function hideTip() { $('tip').hidden = true; }
+  function selectYear(Y) { state.year = Y; renderTM(); }
+
+  // ---------- info dialog ----------
+  function P(text, cls) { var p = document.createElement('p'); if (cls) p.className = cls; p.textContent = text; return p; }
+  function yearOC(Y) { for (var i = 0; i < yearRows.length; i++) if (yearRows[i].year === Y) return yearRows[i].oc; return 0; }
+  function costYearsSince(y0) {
+    return yearRows.filter(function (r) { return r.oc > 0 && r.year >= y0; })
+      .map(function (r) { return r.partial ? r.year + ' so far' : String(r.year); });
+  }
+  function betterYears() {
+    return yearRows.filter(function (r) { return r.oc < 0 && !r.partial; })
+      .map(function (r) { return r.year === 2007 ? '2007 (from June)' : String(r.year); });
+  }
+  function listYears(ys) {
+    if (ys.length <= 1) return ys.join('');
+    return ys.slice(0, -1).join(', ') + ' and ' + ys[ys.length - 1];
+  }
+  function yearEndsText() {
+    var pick = {};
+    D.anchors.forEach(function (an) { if (an[0].slice(5) === '12') pick[an[0].slice(0, 4)] = an[1]; });
+    var ys = Object.keys(pick).sort(), last = ys[ys.length - 1];
+    return ['2007', '2010', '2015', '2020', last].filter(function (y, i, arr) { return pick[y] && arr.indexOf(y) === i; })
+      .map(function (y) { return compact(pick[y] * 1e6) + ' (' + y + ')'; }).join(', ');
+  }
+  function infoFor(id, t) {
+    var a = state.alt, b = state.basis, AL = ALT[a], gx = E.G[a][b], gb = E.G.BND[b];
+    var total = E.ocAt(a, b, 'si', t), base = E.OC0[a].si, rate = E.ratePerSec(a, b, t), aum = E.aumAt(t);
+    var tk = E.tenKAt(a, b, 'si', t), tk0 = E.tenKAt(a, b, 'si', T0);
+    var paceText = 'At the ' + BASIS[b] + ' gap (' + AL.tick + ' ' + pct(gx, 2) + ' a year vs BND ' + pct(gb, 2) + ')';
+    var flowMonth = E.FLOW_SEC * SPYR / 12;
+    var cpiPct = D.cpi.yoy * 100, priceYtd = F.priceYtd;
+    switch (id) {
+      case 'total': {
+        var paras = [];
+        if (a === 'CPI') paras.push('How far BND’s returns fell short of inflation, in dollars of buying power, adding up every month since June 2007 for all the money in the fund.');
+        else paras.push('If, every month since June 2007, the money in BND had been in ' + AL.long + ' instead, its holders would have ended up with this much more.');
+        paras.push('Through the ' + ASOF + ' close the total is ' + usd(base) + '. Since then the clock ' + (rate >= 0 ? 'adds ' : 'subtracts ') + usd(Math.abs(rate), Math.abs(rate) < 100) + ' a second. ' + paceText + ', applied to today’s estimated ' + words(aum) + ' of assets.');
+        if (a === 'BIL') paras.push('A single dollar put into BND in 2007 is ' + (tk0.b >= tk0.x ? 'still ahead of' : 'behind') + ' T-bills: $10,000 grew to ' + usd(tk0.b) + ' in BND vs ' + usd(tk0.x) + ' in BIL. The fund-wide total can differ because most of BND’s money arrived after 2020, when T-bills often paid more.');
+        else if (a === 'CPI') paras.push('$10,000 put into BND in 2007 ' + (tk0.b >= tk0.x ? 'stayed ahead of' : 'fell behind') + ' inflation (' + usd(tk0.b) + ' vs the ' + usd(tk0.x) + ' needed to keep up). Most of BND’s assets arrived later; the fund-wide total lost buying power in ' + listYears(costYearsSince(2020)) + '.');
+        else paras.push('BND did better than ' + AL.tick + ' in ' + listYears(betterYears()) + ', and the total nets those years out. In 2008 alone BND holders came out ' + words(-yearOC(2008)) + ' ahead.');
+        return { title: $('heroLabel').textContent, value: usd(total), tone: tone(total), paras: paras,
+          formula: 'Sum over months of: dollars at work in BND × (' + AL.tick + ' return − BND return). Dollars at work = previous month-end net assets + half of the month’s new money. Not compounded.' };
+      }
+      case 'rate':
+        return { title: 'How fast the clock runs', value: usd(rate, Math.abs(rate) < 100) + ' a second', tone: tone(rate),
+          paras: [paceText + ', BND’s estimated ' + words(aum) + ' ' + (rate >= 0 ? 'fall behind' : 'pull ahead') + ' by ' + words(Math.abs(rate * SPYR)) + ' a year, ' + words(Math.abs(rate * 86400)) + ' a day.',
+            'Assets are assumed to keep growing at the recent pace of new money, about ' + words(flowMonth) + ' a month. Market moves after the ' + ASOF_SHORT + ' close are not included until the next data update. Pick a different window at the top to change the pace.'],
+          formula: 'Rate = net assets × (' + AL.tick + ' annual return − BND annual return) ÷ 31,557,600 seconds in a year. Annual returns are measured over the window ending ' + LASTFULL + '.' };
+      case 'perShare': {
+        var shs = E.sharesAt(t);
+        return { title: 'Per BND share outstanding', value: usd(total / shs, true), tone: tone(total),
+          paras: ['The since-2007 total divided by BND’s estimated ' + (shs / 1e9).toFixed(3) + ' billion shares. Like a debt clock’s debt per citizen, it spreads a total built up over many years across today’s holders. A share bought recently did not lose this much.'],
+          formula: 'Opportunity cost since 2007 ÷ shares outstanding (' + (D.pace.sharesTo / 1e9).toFixed(2) + ' billion on ' + monthEnd(D.pace.to) + ', growing about ' + Math.round(D.pace.perMonth / 1e6) + ' million a month).' };
+      }
+      case 'perTenK':
+        return { title: '$10,000 invested in May 2007', value: usd(tk.diff, true), tone: tone(tk.diff),
+          paras: ['$10,000 put into BND at the May 31, 2007 close, with every distribution reinvested, is worth ' + usd(tk.b, true) + ' now. The same $10,000 ' + (a === 'CPI' ? 'would need to be ' + usd(tk.x, true) + ' to keep up with inflation.' : AL.inA + ' would be worth ' + usd(tk.x, true) + '.'),
+            'This is the classic comparison of one lump sum held throughout. Unlike the headline, it does not depend on when money flowed into BND.'],
+          formula: '$10,000 × product of (1 + monthly total return), ' + AL.tick + ' minus BND. After the ' + ASOF_SHORT + ' close both grow at their ' + BASIS[b] + ' annual rates.' };
+      case 'aum':
+        return { title: 'BND total net assets (estimate)', value: usd(aum), tone: 'amber',
+          paras: ['Vanguard reported ' + words(F.tna * 1e6) + ' in BND, the ETF share class, on ' + fmtDate(F.tnaDate) + '. The clock carries that forward with the price changes since and the recent pace of new money, about ' + (D.pace.perMonth / 1e6).toFixed(1) + ' million new shares or ' + words(flowMonth) + ' a month.',
+            'The whole Total Bond Market Index Fund, including its mutual fund share classes, held ' + words(F.fundTna * 1e6) + '.'],
+          formula: 'Year-end assets from Vanguard’s annual reports: ' + yearEndsText() + '. Months in between: shares outstanding × market price.' };
+      case 'shares':
+        return { title: 'Shares outstanding (estimate)', value: nf0.format(Math.round(E.sharesAt(t))), tone: 'amber',
+          paras: ['Net assets divided by price: ' + (D.pace.sharesFrom / 1e9).toFixed(2) + ' billion shares on ' + monthEnd(D.pace.from) + ' and ' + (D.pace.sharesTo / 1e9).toFixed(2) + ' billion on ' + monthEnd(D.pace.to) + ', about ' + (D.pace.perMonth / 1e6).toFixed(1) + ' million more each month. The clock assumes that pace continues.'],
+          formula: 'Shares on ' + monthEnd(D.pace.to) + ' + ' + (D.pace.perMonth / 1e6).toFixed(1) + ' million × months since.' };
+      case 'income':
+        return { title: 'Income paid to BND holders in ' + YEAR + ' (estimate)', value: usd(E.incomeAt(t)), tone: 'amber',
+          paras: [(D.income.count === 1 ? 'One distribution' : D.income.count + ' monthly distributions') + ' so far in ' + YEAR + ' came to $' + D.income.perShareYtd.toFixed(2) + ' a share. Multiplied by the shares outstanding at each payout, that is about ' + words(D.income.paidYtd) + '. The clock adds the income building toward the next payout at the latest monthly rate, $' + D.income.lastDist.toFixed(4) + ' a share.',
+            'Over the last 12 months BND paid $' + F.ttmDist.toFixed(2) + ' a share, ' + (F.ttmDist / F.price * 100).toFixed(2) + '% of the ' + ASOF_SHORT + ' price.'],
+          formula: 'Sum of (distribution per share × shares outstanding) + $' + D.income.lastDist.toFixed(4) + ' a share a month accruing since ' + fmtShort(D.income.lastDistDate) + '. Stops at the end of ' + YEAR + '.' };
+      case 'fees':
+        return { title: 'Fees paid to Vanguard in ' + YEAR + ' (estimate)', value: usd(E.feesAt(t)), tone: 'amber',
+          paras: ['BND’s expense ratio is ' + F.expenseRatio.toFixed(2) + '% a year, taken from the fund’s assets a little each day. On today’s assets that is about ' + words(aum * F.expenseRatio / 100) + ' a year, or ' + usd(aum * F.expenseRatio / 100 / SPYR, true) + ' a second.',
+            'On a $10,000 holding it comes to $' + (100 * F.expenseRatio).toFixed(0) + ' a year. The average intermediate-term bond fund charges ' + F.peerExpenseRatio.toFixed(2) + '%, per Vanguard.'],
+          formula: 'Monthly assets × ' + F.expenseRatio.toFixed(2) + '% × days ÷ 365.25, from Jan 1, ' + YEAR + '. Stops at the end of ' + YEAR + '.' };
+      case 'price':
+        return { title: 'Market price', value: '$' + F.price.toFixed(2), tone: 'amber',
+          paras: ['BND closed at $' + F.price.toFixed(2) + ' on ' + ASOF + (F.nav && F.navDate === D.asOf ? ', with a net asset value of $' + F.nav.toFixed(2) : '') + '. Over the past 52 weeks its ' + (F.rangeBasis === 'closing prices' ? 'closing price' : 'price') + ' ranged from $' + F.low52.toFixed(2) + ' (' + fmtDate(F.low52Date) + ') to $' + F.high52.toFixed(2) + ' (' + fmtDate(F.high52Date) + ').',
+            'The price is ' + (priceYtd < 0 ? 'down ' : 'up ') + Math.abs(priceYtd * 100).toFixed(1) + '% in ' + YEAR + '; with distributions the total return is ' + pct(E.cumRet('BND', 'ytd')) + '. The record close was $' + PK.priceHigh.toFixed(2) + ' on ' + fmtDate(PK.priceHighDate) + '.'] };
+      case 'sec':
+        return { title: 'SEC yield', value: F.secYield.toFixed(2) + '%', tone: 'amber',
+          paras: [F.secYield.toFixed(2) + '% as of ' + fmtDate(F.secYieldDate) + '. The standardized 30-day yield reflects the yield to maturity of BND’s bonds, so it is the best guide to the income the fund should earn from here.',
+            'Portfolio on ' + fmtDate(F.portfolioDate) + ': average yield to maturity ' + F.ytm.toFixed(1) + '%, average coupon ' + F.avgCoupon.toFixed(1) + '%, average duration ' + F.duration.toFixed(1) + ' years, average maturity ' + F.avgMaturity.toFixed(1) + ' years, ' + nf0.format(F.bonds) + ' bonds.'] };
+      case 'unreal': {
+        var u = F.tna * 1e6 * F.unrealizedPct / 100;
+        return { title: u < 0 ? 'Unrealized losses inside the fund' : 'Unrealized gains inside the fund', value: compact(Math.abs(u)), tone: u < 0 ? 'red' : 'amber',
+          paras: u < 0
+            ? ['On ' + fmtDate(F.unrealizedDate) + ', Vanguard reported unrealized losses of $' + Math.abs(F.unrealizedPerShare).toFixed(2) + ' a share, ' + Math.abs(F.unrealizedPct).toFixed(2) + '% of net asset value: bonds BND bought when yields were lower that are now worth less than it paid. On ' + words(F.tna * 1e6) + ' of assets that is about ' + words(-u) + '.',
+               'If yields hold, these losses shrink as the bonds approach maturity and repay at face value.']
+            : ['On ' + fmtDate(F.unrealizedDate) + ', Vanguard reported unrealized gains of $' + F.unrealizedPerShare.toFixed(2) + ' a share, ' + F.unrealizedPct.toFixed(2) + '% of net asset value. On ' + words(F.tna * 1e6) + ' of assets that is about ' + words(u) + '.'] };
+      }
+      case 'ratehit':
+        return { title: 'Hit from a 1-point rise in rates', value: compact(-aum * F.duration / 100), tone: 'red',
+          paras: ['BND’s average duration is ' + F.duration.toFixed(1) + ' years: if yields across the curve rose by 1 percentage point, its price would fall about ' + F.duration.toFixed(1) + '%, roughly ' + words(aum * F.duration / 100) + ' at today’s assets. A 1-point fall in yields would add about the same.'],
+          formula: 'Net assets × duration (' + F.duration.toFixed(1) + ') × 1%.' };
+      case 'tbill':
+        return { title: R.tbillLabel, value: R.tbill.toFixed(2) + '%', tone: 'amber',
+          paras: [R.tbill.toFixed(2) + '% on ' + fmtDate(R.date) + ' (' + R.source + '). Roughly what cash in Treasury bills or a government money market fund earns now. T-bills (BIL) returned ' + pct(E.G.BIL['1Y'], 2) + ' over the 12 months to ' + LASTFULL + ', vs ' + pct(E.G.BND['1Y'], 2) + ' for BND.'] };
+      case 't10':
+        return { title: '10-year Treasury yield', value: R.ust10.toFixed(2) + '%', tone: 'amber',
+          paras: [R.ust10.toFixed(2) + '% on ' + fmtDate(R.date) + ' (' + R.source + '). When yields rise, existing bonds lose value; BND’s price is ' + (priceYtd < 0 ? 'down ' : 'up ') + Math.abs(priceYtd * 100).toFixed(1) + '% in ' + YEAR + '.'] };
+      case 'cpi':
+        return { title: 'Inflation, 12 months', value: cpiPct.toFixed(2) + '%', tone: 'amber',
+          paras: ['Consumer prices (CPI-U, not seasonally adjusted) rose ' + cpiPct.toFixed(2) + '% in the 12 months to ' + monLong(D.cpi.month) + ', the latest Bureau of Labor Statistics reading. Over the 5 years to ' + LASTFULL + ' prices rose about ' + pct(Math.pow(1 + E.G.CPI['5Y'], 5) - 1) + ' in total.'] };
+      case 'spreadT': {
+        var sp = F.secYield - R.tbill;
+        var wins = ['1Y', '3Y', '5Y', '10Y'].filter(function (w) { return E.G.BIL[w] > E.G.BND[w]; }).map(function (w) { return w.replace('Y', ''); });
+        var back = wins.length ? 'Looking back, T-bills beat BND over the last ' + listYears(wins) + (wins.length === 1 && wins[0] === '1' ? ' year' : ' years') + ' (to ' + LASTFULL + ').' : 'Looking back, BND beat T-bills over the last 1, 3, 5 and 10 years (to ' + LASTFULL + ').';
+        return { title: 'BND yield over T-bills', value: signed(sp, 2) + ' pts', tone: 'amber',
+          paras: ['BND’s ' + F.secYield.toFixed(2) + '% SEC yield is ' + Math.abs(sp).toFixed(2) + ' percentage points ' + (sp >= 0 ? 'above' : 'below') + ' the ' + R.tbill.toFixed(2) + '% ' + R.tbillLabel.replace(' yield', '') + ' yield. Looking ahead, that is ' + (sp >= 0 ? 'the extra income BND offers for taking on interest-rate risk.' : 'how much less income BND offers than cash right now.'),
+            back + ' Since 2007, BND is ' + (E.G.BND.SI >= E.G.BIL.SI ? 'ahead' : 'behind') + ': ' + pct(E.G.BND.SI, 2) + ' a year vs ' + pct(E.G.BIL.SI, 2) + '.'] };
+      }
+      case 'spreadCPI': {
+        var sc = F.secYield - cpiPct;
+        return { title: 'BND yield over inflation', value: signed(sc, 2) + ' pts', tone: 'amber',
+          paras: [F.secYield.toFixed(2) + '% minus ' + cpiPct.toFixed(2) + '% leaves a real yield of about ' + signed(sc, 1) + ' points if inflation holds at its current rate. Over the last 5 years BND returned ' + pct(E.G.BND['5Y'], 2) + ' a year while inflation ran ' + pct(E.G.CPI['5Y'], 2) + ' a year.'] };
+      }
+      case 'under':
+        return { title: PK.gap < 0 ? 'Time below the ' + monLong(PEAK_MONTH) + ' peak' : 'Time since the latest high', value: underwater(t), tone: 'red',
+          paras: PK.gap < 0
+            ? ['BND’s total return, with distributions reinvested, peaked on ' + fmtDate(PK.date) + '. On ' + ASOF + ' it was still ' + Math.abs(PK.gap * 100).toFixed(1) + '% below that level, so anyone who bought BND at the peak has been behind ever since.',
+               (PK.closestDate ? 'It came within ' + Math.abs(PK.closestGap * 100).toFixed(1) + '% on ' + fmtDate(PK.closestDate) + '. ' : '') + 'This counter keeps running until the data shows a new high.']
+            : ['BND’s total return set a new high on ' + fmtDate(PK.date) + '. The counter shows the time since that high.'] };
+      case 'trdd':
+        return { title: 'Total return vs. peak', value: pct(PK.gap), tone: PK.gap < 0 ? 'red' : 'amber',
+          paras: ['With every distribution reinvested, BND was ' + Math.abs(PK.gap * 100).toFixed(1) + '% ' + (PK.gap < 0 ? 'below' : 'above') + ' its ' + fmtDate(PK.date) + ' peak at the ' + ASOF + ' close.'] };
+      case 'realdd':
+        return { title: 'After inflation', value: pct(PK.real), tone: PK.real < 0 ? 'red' : 'amber',
+          paras: ['Consumer prices rose about ' + (PK.cpiSince * 100).toFixed(1) + '% from ' + monLong(PEAK_MONTH) + ' to ' + monLong(D.asOf.slice(0, 7)) + '. Combined with the total return since the peak, BND’s buying power is ' + Math.abs(PK.real * 100).toFixed(1) + '% ' + (PK.real < 0 ? 'below' : 'above') + ' its peak.'],
+          formula: '(1 ' + (PK.gap < 0 ? '− ' : '+ ') + Math.abs(PK.gap).toFixed(3) + ') ÷ ' + (1 + PK.cpiSince).toFixed(3) + ' − 1 = ' + pct(PK.real) };
+      case 'pdd': {
+        var pd = F.price / PK.priceHigh - 1;
+        return { title: 'Price vs. record close', value: pct(pd), tone: pd < 0 ? 'red' : 'amber',
+          paras: ['$' + F.price.toFixed(2) + ' on ' + ASOF + ' vs the record close of $' + PK.priceHigh.toFixed(2) + ' on ' + fmtDate(PK.priceHighDate) + '. The price alone overstates the damage because BND pays out its interest each month; the total return, which counts those payouts, is ' + pct(PK.gap) + ' from its peak.'] };
+      }
+      case 'closest':
+        return { title: 'Closest it came back', value: PK.closestDate ? pct(PK.closestGap) : '—', tone: 'amber',
+          paras: [PK.closestDate
+            ? 'On ' + fmtDate(PK.closestDate) + ', BND’s total return came within ' + Math.abs(PK.closestGap * 100).toFixed(1) + '% of its ' + fmtDate(PK.date) + ' peak, the closest it has come since.'
+            : 'BND’s total return is at its high, so there is no shortfall to measure.'] };
+      default:
+        if (id.indexOf('p:') === 0) {
+          var p = id.slice(2), oc = E.ocAt(a, b, p, t), tkp = E.tenKAt(a, b, p, T0);
+          var extra = p === 'ytd' ? ' It stops counting at the end of ' + YEAR + '.' : p === 'peak' ? ' BND’s total return peaked on ' + fmtDate(PK.date) + '; the count starts with ' + monLong(PEAK_MONTH) + '.' : '';
+          return { title: PERIODS[p].label, value: usd(oc), tone: tone(oc),
+            paras: ['Same method as the headline, counting only the months since ' + PERIODS[p].from + '.' + extra,
+              'Over this stretch BND returned ' + pct(E.cumRet('BND', p)) + ' and ' + AL.tick + ' ' + pct(E.cumRet(a, p)) + '. $10,000 held through it became ' + usd(tkp.b) + ' in BND vs ' + usd(tkp.x) + ' ' + AL.inA + '.'],
+            formula: 'Sum over the window of: dollars at work × (' + AL.tick + ' return − BND return), plus the projection since the ' + ASOF_SHORT + ' close.' };
+        }
+        return null;
+    }
+  }
+  var infoOpenId = null, lastFocus = null;
+  function openInfo(id, opener) {
+    var info = infoFor(id, Date.now());
+    if (!info) return;
+    infoOpenId = id; lastFocus = opener || null;
+    $('infoTitle').textContent = info.title;
+    var v = $('infoVal'); v.textContent = info.value; setTone(v, info.tone || 'ink');
+    var body = $('infoBody');
+    while (body.firstChild) body.removeChild(body.firstChild);
+    info.paras.forEach(function (tx) { body.appendChild(P(tx)); });
+    if (info.formula) body.appendChild(P(info.formula, 'formula'));
+    var dlg = $('info');
+    if (typeof dlg.showModal === 'function') { if (!dlg.open) dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+  }
+  function closeInfo() {
+    var dlg = $('info');
+    if (typeof dlg.close === 'function' && dlg.open) dlg.close(); else dlg.removeAttribute('open');
+  }
+  $('infoClose').addEventListener('click', closeInfo);
+  $('info').addEventListener('close', function () { infoOpenId = null; if (lastFocus && lastFocus.focus) lastFocus.focus(); });
+  $('info').addEventListener('click', function (e) { if (e.target === $('info')) closeInfo(); });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-info]') : null;
+    if (el) openInfo(el.getAttribute('data-info'), el);
+  });
+
+  // ---------- settings ----------
+  function setAlt(a) { if (!ALT[a] || a === state.alt) return; state.alt = a; afterSettings(); }
+  function setBasis(b) { if (!BASIS[b] || b === state.basis) return; state.basis = b; afterSettings(); }
+  function afterSettings() {
+    yearRows = E.years(state.alt);
+    renderLabels(); computeMy(); renderYearTable(); renderTM(); save(); tick(true);
+    if (infoOpenId) openInfo(infoOpenId, lastFocus);
+  }
+  function radioKeys(group, attr, setter) {
+    group.addEventListener('keydown', function (e) {
+      if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].indexOf(e.key) < 0) return;
+      var btns = Array.prototype.slice.call(group.querySelectorAll('[' + attr + ']'));
+      var cur = btns.indexOf(document.activeElement); if (cur < 0) return;
+      e.preventDefault();
+      var nx = (cur + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1) + btns.length) % btns.length;
+      setter(btns[nx].getAttribute(attr)); btns[nx].focus();
+    });
+    group.addEventListener('click', function (e) {
+      var bt = e.target.closest('[' + attr + ']'); if (bt) setter(bt.getAttribute(attr));
+    });
+  }
+  radioKeys($('altGroup'), 'data-alt', setAlt);
+  radioKeys($('basisGroup'), 'data-basis', setBasis);
+  radioKeys($('yearGroup'), 'data-year', function (y) { selectYear(+y); });
+  $('myAlt').addEventListener('change', function () { setAlt($('myAlt').value); });
+  ['myAmount', 'myMonthly'].forEach(function (id) { $(id).addEventListener('input', readMy); });
+  $('myStart').addEventListener('change', readMy);
+  $('myForm').addEventListener('submit', function (e) { e.preventDefault(); });
+
+  // ---------- the clock loop ----------
+  var lastPaint = 0, interval = reduceMotion ? 1000 : 50, lastLabels = 0, lastStale = -1;
+  function tick(force) {
+    var t = Date.now();
+    for (var i = 0; i < tickers.length; i++) updateTicker(tickers[i], t);
+    $('nowTime').textContent = fmtNow.format(new Date(t)) + ' ET';
+    var days = Math.floor((t - T0) / 86400000);
+    if (days !== lastStale) {
+      lastStale = days;
+      var note = $('dataNote');
+      if (days > 5) { note.textContent = 'Data through the ' + ASOF + ' close. The daily update hasn’t run for ' + nf0.format(days) + ' days, so these figures are projections.'; note.classList.add('stale'); }
+      else { note.textContent = 'Data through the ' + ASOF + ' close; ticking forward since then'; note.classList.remove('stale'); }
+    }
+    if (force || t - lastLabels > 15000) { lastLabels = t; renderLabels(); }
+    if (infoOpenId) {
+      var inf = infoFor(infoOpenId, t), iv = $('infoVal');
+      if (inf && iv.textContent !== inf.value) iv.textContent = inf.value;
+      if (inf) setTone(iv, inf.tone || 'ink');
+    }
+    if (fitPending.length) { var list = fitPending; fitPending = []; list.forEach(fit); }
+  }
+  function frame(ts) {
+    if (ts - lastPaint >= interval) { lastPaint = ts; tick(false); }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- start ----------
+  buildStartOptions();
+  buildYears();
+  $('myAmount').value = String(state.my.amount);
+  $('myStart').value = String(state.my.start);
+  $('myMonthly').value = String(state.my.monthly);
+  yearRows = E.years(state.alt);
+  renderStatic(); renderLabels(); computeMy(); renderYearTable(); renderTM();
+  tick(true); fitAll();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitAll(); drawChart(); });
+  var rz = null;
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { fitAll(); drawChart(); }, 120); });
+  requestAnimationFrame(frame);
+})();
+</script>

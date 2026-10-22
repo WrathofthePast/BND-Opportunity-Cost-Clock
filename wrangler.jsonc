@@ -1,0 +1,11 @@
+// Cloudflare Worker that serves the clock as a static site.
+// Cloudflare rebuilds it on every push to main (deploy command: npx wrangler deploy).
+{
+  "name": "bnd-opportunity-cost-clock",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public"
+  }
+}

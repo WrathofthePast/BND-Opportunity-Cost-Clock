@@ -1,0 +1,171 @@
+"""Simulated runs of scripts/update_data.py with made-up market data (no network).
+
+Covers: a normal day, a month rolling over, a year rolling over (with a new Vanguard net-asset figure),
+a Tiingo outage with Yahoo fallback, and a total outage (nothing may change except status.json).
+Run: python tests/simulate_updates.py
+"""
+import datetime as dt
+import importlib.util
+import json
+import math
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+ROOT = Path(__file__).resolve().parent.parent
+ET = ZoneInfo('America/New_York')
+spec = importlib.util.spec_from_file_location('update_data', ROOT / 'scripts' / 'update_data.py')
+ud = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ud)
+
+failures = []
+
+
+def check(name, cond):
+    print(('ok   ' if cond else 'FAIL ') + name)
+    if not cond:
+        failures.append(name)
+
+
+def weekdays(start, end):
+    d = start
+    while d <= end:
+        if d.weekday() < 5 and not (d.month == 12 and d.day == 25) and not (d.month == 1 and d.day == 1):
+            yield d
+        d += dt.timedelta(days=1)
+
+
+PARAMS = {  # start price, daily drift, daily swing, distribution rule
+    'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
+    'SPY': (620.0, 0.0006, 0.006, 'quarterly'), 'BIL': (91.5, 0.0, 0.0001, 'monthly'),
+}
+
+
+def fake_rows(ticker, start, end):
+    p0, drift, swing, rule = PARAMS[ticker]
+    rows, price = [], p0
+    first = {}
+    for d in weekdays(dt.date(2025, 1, 2), end):
+        price *= 1 + drift + swing * math.sin(d.toordinal() * (0.7 + len(ticker) / 10))
+        key = d.strftime('%Y-%m')
+        is_first = key not in first
+        first.setdefault(key, d)
+        div = 0.0
+        if is_first and (rule == 'monthly' or d.month in (3, 6, 9, 12)):
+            div = round(price * (0.0035 if rule == 'monthly' else 0.003), 4)
+        if d >= start:
+            rows.append({'date': d.isoformat(), 'close': round(price, 2), 'div': div, 'split': 1.0})
+    return rows
+
+
+def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, cpi=None, vanguard=None, workdir):
+    state_before = (workdir / 'data' / 'state.json').read_text()
+    ud.ROOT, ud.DATA = workdir, workdir / 'data'
+
+    def tiingo(t, start, end, key):
+        if not tiingo_ok:
+            raise RuntimeError('api.tiingo.com: HTTP Error 503: Service Unavailable')
+        return fake_rows(t, start, end)
+
+    def yahoo(t, start, end):
+        if not yahoo_ok:
+            raise RuntimeError('query1.finance.yahoo.com: HTTP Error 429: Too Many Requests')
+        return fake_rows(t, start, end)
+
+    def fake_cpi():
+        if cpi is None:
+            raise RuntimeError('api.bls.gov: timed out')
+        return cpi
+
+    ud.fetch_tiingo, ud.fetch_yahoo, ud.fetch_cpi = tiingo, yahoo, fake_cpi
+    ud.fetch_treasury = lambda today: {'tbill': 4.2, 'tbillLabel': '3-month Treasury yield', 'ust10': 5.0,
+                                       'date': (today - dt.timedelta(days=1)).isoformat(), 'source': 'U.S. Treasury daily par yield curve'}
+    ud.fetch_vanguard = lambda: vanguard or ({}, ['characteristic: investor.vanguard.com: HTTP Error 403: Forbidden'])
+    import os
+    os.environ['TIINGO_API_KEY'] = 'test-key'
+    code = ud.main([], now_et.astimezone(dt.timezone.utc))
+    state = json.loads((workdir / 'data' / 'state.json').read_text())
+    status = json.loads((workdir / 'data' / 'status.json').read_text())
+    page = json.loads((workdir / 'data' / 'clock-data.json').read_text())
+    print(f'--- {name}: exit {code}, as of {page["asOf"]}, final through {state["returns"]["final_through"]}')
+    return code, state, status, page, state_before
+
+
+def main():
+    with tempfile.TemporaryDirectory() as tmp:
+        w = Path(tmp)
+        for sub in ('data', 'src', 'scripts', 'tests'):
+            shutil.copytree(ROOT / sub, w / sub)
+        n0 = json.loads((w / 'data' / 'state.json').read_text())
+        months0 = len(n0['returns']['BND'])
+
+        # 1. A normal weekday evening in the same month
+        code, st, status, page, _ = run_case('same month', dt.datetime(2026, 10, 23, 19, 30, tzinfo=ET), workdir=w)
+        check('same month: success', code == 0)
+        check('same month: data through Oct 23', page['asOf'] == '2026-10-23')
+        check('same month: no month finalized', st['returns']['final_through'] == '2026-09' and len(st['returns']['BND']) == months0)
+        check('same month: status compares the new numbers with the old ones', status.get('checks', {}).get('month') == '2026-10')
+        check('same month: CPI outage is reported, not fatal', status['sources']['cpi']['ok'] is False)
+        check('same month: Vanguard block is reported, not fatal', status['sources']['vanguard']['ok'] is False)
+        check('same month: Treasury yields refreshed', page['rates']['ust10'] == 5.0)
+        r = subprocess.run(['node', str(w / 'tests' / 'test_engine.js')], capture_output=True, text=True, cwd=w)
+        check('same month: page engine matches Python (' + r.stdout.strip().splitlines()[-1] + ')', r.returncode == 0)
+
+        # 2. Evening run before the market closes must not use the unfinished day
+        code, st, status, page, _ = run_case('during market hours', dt.datetime(2026, 10, 26, 11, 0, tzinfo=ET), workdir=w)
+        check('market hours: ignores the unfinished session', page['asOf'] == '2026-10-23')
+
+        # 3. Month rolls over: October becomes permanent, November is the running month
+        code, st, status, page, _ = run_case('month rollover', dt.datetime(2026, 11, 4, 19, 30, tzinfo=ET),
+                                             cpi={'2026-09': 336.94}, workdir=w)
+        check('rollover: success', code == 0)
+        check('rollover: October finalized', st['returns']['final_through'] == '2026-10' and status['finalizedThisRun'] == ['2026-10'])
+        check('rollover: one more month of history', len(st['returns']['BND']) == months0 + 1)
+        check('rollover: November is the running month', st['provisional']['month'] == '2026-11' and page['n'] == months0 + 2)
+        check('rollover: November distribution recorded', any(d.startswith('2026-11') for d, a in st['dists']))
+        check('rollover: October CPI estimated until published', page['r']['CPI'][-2] > 0)
+        r = subprocess.run(['node', str(w / 'tests' / 'test_engine.js')], capture_output=True, text=True, cwd=w)
+        check('rollover: page engine matches Python', r.returncode == 0)
+
+        # 4. Year rolls over, Vanguard reachable again with a new month-end net-asset figure
+        vg = ({'tna': 170000.0, 'tnaDate': '2026-11-30', 'fundTna': 400000.0, 'duration': 5.8, 'avgMaturity': 8.2,
+               'avgCoupon': 3.9, 'ytm': 5.4, 'bonds': 11500, 'portfolioDate': '2026-11-30', 'secYield': 5.0,
+               'secYieldDate': '2027-01-05', 'nav': 70.0, 'navDate': '2027-01-05', 'unrealizedPct': -8.5,
+               'unrealizedPerShare': -6.0, 'unrealizedDate': '2026-12-31', 'expenseRatio': 0.03, 'peerExpenseRatio': 0.52}, [])
+        code, st, status, page, _ = run_case('year rollover', dt.datetime(2027, 1, 6, 19, 30, tzinfo=ET),
+                                             cpi={'2026-10': 337.5, '2026-11': 337.2}, vanguard=vg, workdir=w)
+        check('new year: success', code == 0)
+        check('new year: Nov and Dec finalized', st['returns']['final_through'] == '2026-12')
+        check('new year: January is the running month', st['provisional']['month'] == '2027-01' and page['ytdIdx'] == ud.ix('2027-01'))
+        check('new year: Vanguard November net assets became an anchor', st['assets']['anchors'][-1][0] == '2026-11')
+        check('new year: published CPI replaced the estimate', st['cpi'].get('2026-11') == 337.2)
+        check('new year: income counts only 2027 distributions', page['income']['count'] == 1)
+        r = subprocess.run(['node', str(w / 'tests' / 'test_engine.js')], capture_output=True, text=True, cwd=w)
+        check('new year: page engine matches Python', r.returncode == 0)
+        if os.environ.get('SIM_KEEP'):
+            shutil.copy(w / 'public' / 'index.html', os.environ['SIM_KEEP'])
+
+        # 5. Tiingo down, Yahoo works
+        code, st, status, page, _ = run_case('Tiingo outage', dt.datetime(2027, 1, 7, 19, 30, tzinfo=ET),
+                                             tiingo_ok=False, workdir=w)
+        check('Tiingo outage: falls back to Yahoo', code == 0 and status['sources']['prices']['source'] == 'Yahoo Finance')
+
+        # 6. Everything down: nothing changes except status.json
+        before = {p: (w / p).read_text() for p in ('data/state.json', 'data/clock-data.json', 'public/index.html')}
+        code, st, status, page, _ = run_case('total outage', dt.datetime(2027, 1, 8, 19, 30, tzinfo=ET),
+                                             tiingo_ok=False, yahoo_ok=False, workdir=w)
+        after = {p: (w / p).read_text() for p in before}
+        check('total outage: exits with an error', code == 1)
+        check('total outage: data and page untouched', before == after)
+        check('total outage: error recorded in status.json', 'Could not fetch prices' in status.get('lastError', {}).get('message', ''))
+
+    print(f'\n{"All simulated runs passed" if not failures else str(len(failures)) + " failures"}')
+    return 1 if failures else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
