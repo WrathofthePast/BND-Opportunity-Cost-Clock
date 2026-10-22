@@ -41,7 +41,7 @@ def weekdays(start, end):
 
 PARAMS = {  # start price, daily drift, daily swing, distribution rule
     'BND': (72.0, -0.00002, 0.002, 'monthly'), 'VTI': (300.0, 0.0006, 0.006, 'quarterly'),
-    'SPY': (620.0, 0.0006, 0.006, 'quarterly'),
+    'SPY': (620.0, 0.0006, 0.006, 'quarterly'), 'NVDA': (180.0, 0.001, 0.015, 'quarterly'),
 }
 TBILL_YIELD = 4.2   # flat 3-month Treasury yield in the made-up future
 # BND distributions as a price feed reports them: Vanguard's exact amounts rounded to 4 decimals
@@ -106,7 +106,17 @@ def run_case(name, now_et, *, tiingo_ok=True, yahoo_ok=True, treasury_ok=True, c
     return code, state, status, page, state_before
 
 
+def split_check():
+    """A 10-for-1 split as Tiingo reports it (raw closes plus the split factor) must not look like a 90% loss."""
+    rows = [{'date': '2026-09-30', 'close': 1000.0, 'div': 0.0, 'split': 1.0},
+            {'date': '2026-10-01', 'close': 101.0, 'div': 0.0, 'split': 10.0},     # split day: $1,000 -> $101 a share
+            {'date': '2026-10-02', 'close': 102.0, 'div': 0.01, 'split': 1.0}]
+    f = ud.month_factors(rows, '2026-09')[0]['2026-10'][0]
+    check(f'10-for-1 split counted as a gain, not a loss ({f - 1:+.4%})', abs(f - 1010 / 1000 * 102.01 / 101) < 1e-12)
+
+
 def main():
+    split_check()
     with tempfile.TemporaryDirectory() as tmp:
         w = Path(tmp)
         for sub in ('data', 'src', 'scripts', 'tests'):
