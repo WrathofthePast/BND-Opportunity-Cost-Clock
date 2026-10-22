@@ -1,0 +1,78 @@
+name: Update clock data
+
+on:
+  schedule:
+    - cron: '30 23 * * 1-5'   # weekdays 7:30 pm EDT / 6:30 pm EST, after end-of-day prices are out
+    - cron: '15 12 * * 2-6'   # next morning, to pick up late or corrected prices
+  workflow_dispatch:           # "Run workflow" button on the Actions tab
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/update.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-clock
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Test the update logic with simulated market data
+        run: python tests/simulate_updates.py
+
+      - name: Fetch the latest data and rebuild the page
+        id: update
+        continue-on-error: true
+        env:
+          TIINGO_API_KEY: ${{ secrets.TIINGO_API_KEY }}
+          BLS_API_KEY: ${{ secrets.BLS_API_KEY }}
+        run: python scripts/update_data.py
+
+      - name: Check the page's calculations
+        id: test
+        if: steps.update.outcome == 'success'
+        continue-on-error: true
+        run: node tests/test_engine.js
+
+      - name: Commit the new data
+        run: |
+          if [ "${{ steps.update.outcome }}" != "success" ] || [ "${{ steps.test.outcome }}" != "success" ]; then
+            # Keep the published page as it was; only record what went wrong in data/status.json.
+            git checkout -- public data/state.json data/clock-data.json data/check.json 2>/dev/null || true
+          fi
+          git add public data
+          if git diff --cached --quiet; then
+            echo "No new data."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          AS_OF=$(python -c "import json; print(json.load(open('data/status.json')).get('asOf') or 'unknown')")
+          git commit -m "Update clock data through ${AS_OF}"
+          git pull --rebase
+          git push
+
+      - name: Report a failed update
+        if: steps.update.outcome != 'success' || steps.test.outcome != 'success'
+        run: |
+          echo "::error::The data update failed; the site keeps showing the last good data. Details are in data/status.json."
+          cat data/status.json || true
+          exit 1
