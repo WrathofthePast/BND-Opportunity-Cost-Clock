@@ -20,21 +20,22 @@
 :root {
   /* Layout: a trading-floor LED board. A black field ruled into placards: one giant red counter up top,
      dense grids of smaller counters below, and the settings in one row above everything they scope. */
+  /* Dark: an old Trans-Lux style quotation board, amber, red and green lamps on black. */
   --board: #000000;        /* the board itself */
-  --panel: #13110e;        /* raised surfaces: dialog, tooltip */
-  --rule: #2a2622;         /* hairline rules between placards */
-  --rule-hi: #4b453d;      /* borders on controls and the LED window */
-  --ink: #ece6da;          /* primary text, neutral numbers */
+  --panel: #0e0d0b;        /* raised surfaces: dialog, tooltip */
+  --rule: #262320;         /* hairline rules between placards */
+  --rule-hi: #46413a;      /* borders on controls and the LED window */
+  --ink: #ece6da;          /* primary text */
   --label: #a69f92;        /* placard labels, secondary text */
-  --muted: #7d766b;        /* tertiary text */
-  --red: #ff4436;          /* LED red: money given up */
-  --blue: #4db8ff;         /* LED blue: BND came out ahead */
-  --amber: #ffb22e;        /* LED amber: fund and market readings, controls */
-  --red-glow: rgba(255, 68, 54, .42);
-  --blue-glow: rgba(77, 184, 255, .36);
-  --amber-glow: rgba(255, 178, 46, .30);
-  --wash: rgba(255, 178, 46, .07);
-  --dot: rgba(255, 255, 255, .055);
+  --muted: #8a8274;        /* tertiary text */
+  --red: #ff3b2f;          /* red lamps: money given up */
+  --green: #2fe35a;        /* green lamps: BND came out ahead */
+  --amber: #ffb000;        /* amber lamps: readings, controls */
+  --red-glow: rgba(255, 59, 47, .45);
+  --green-glow: rgba(47, 227, 90, .38);
+  --amber-glow: rgba(255, 176, 0, .34);
+  --wash: rgba(255, 176, 0, .08);
+  --unlit: rgba(255, 255, 255, .075);   /* lamps that are off */
   --shade: rgba(0, 0, 0, .9);
   --scrim: rgba(0, 0, 0, .74);
 
@@ -47,43 +48,45 @@
 /* Light mode: the same board in ink on paper. Follows the device setting unless the visitor picks one. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --board: #f4f1ea;        /* paper */
-    --panel: #ffffff;
-    --rule: #ddd6c8;
-    --rule-hi: #b3aa99;
-    --ink: #1c1915;
-    --label: #575045;
-    --muted: #6b6457;
-    --red: #c0261a;          /* deep LED red */
-    --blue: #0a64a0;
-    --amber: #965800;
-    --red-glow: rgba(192, 38, 26, 0);
-    --blue-glow: rgba(10, 100, 160, 0);
-    --amber-glow: rgba(150, 88, 0, 0);
-    --wash: rgba(150, 88, 0, .08);
-    --dot: rgba(0, 0, 0, .06);
-    --shade: rgba(60, 50, 30, .07);
+    /* Light: ticker tape and ledger paper, black and red ink, green for gains. */
+    --board: #f6f1e3;        /* paper */
+    --panel: #fffcf3;
+    --rule: #e0d8c3;
+    --rule-hi: #b9ad92;
+    --ink: #161310;          /* black ink */
+    --label: #4f4739;
+    --muted: #665d4d;
+    --red: #b3241c;          /* red ink: in the red */
+    --green: #1c6a34;        /* ledger green */
+    --amber: #8f5600;
+    --red-glow: rgba(179, 36, 28, 0);
+    --green-glow: rgba(28, 106, 52, 0);
+    --amber-glow: rgba(143, 86, 0, 0);
+    --wash: rgba(143, 86, 0, .08);
+    --unlit: rgba(22, 19, 16, .055);
+    --shade: rgba(60, 50, 30, .06);
     --scrim: rgba(28, 25, 21, .45);
     color-scheme: light;
   }
 }
 :root[data-theme="light"] {
-  --board: #f4f1ea;        /* paper */
-  --panel: #ffffff;
-  --rule: #ddd6c8;
-  --rule-hi: #b3aa99;
-  --ink: #1c1915;
-  --label: #575045;
-  --muted: #6b6457;
-  --red: #c0261a;          /* deep LED red */
-  --blue: #0a64a0;
-  --amber: #965800;
-  --red-glow: rgba(192, 38, 26, 0);
-  --blue-glow: rgba(10, 100, 160, 0);
-  --amber-glow: rgba(150, 88, 0, 0);
-  --wash: rgba(150, 88, 0, .08);
-  --dot: rgba(0, 0, 0, .06);
-  --shade: rgba(60, 50, 30, .07);
+  /* Light: ticker tape and ledger paper, black and red ink, green for gains. */
+  --board: #f6f1e3;        /* paper */
+  --panel: #fffcf3;
+  --rule: #e0d8c3;
+  --rule-hi: #b9ad92;
+  --ink: #161310;          /* black ink */
+  --label: #4f4739;
+  --muted: #665d4d;
+  --red: #b3241c;          /* red ink: in the red */
+  --green: #1c6a34;        /* ledger green */
+  --amber: #8f5600;
+  --red-glow: rgba(179, 36, 28, 0);
+  --green-glow: rgba(28, 106, 52, 0);
+  --amber-glow: rgba(143, 86, 0, 0);
+  --wash: rgba(143, 86, 0, .08);
+  --unlit: rgba(22, 19, 16, .055);
+  --shade: rgba(60, 50, 30, .06);
   --scrim: rgba(28, 25, 21, .45);
   color-scheme: light;
 }
@@ -168,7 +171,7 @@ button { font: inherit; color: inherit; }
 .fee-line { margin: 10px 0 0; font: 500 13.5px/1.4 var(--font-label); color: var(--label); letter-spacing: .02em; }
 .fee-line b { color: var(--ink); font-weight: 600; }
 .key .k-red { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
-.key .k-blue { background: var(--blue); box-shadow: 0 0 6px var(--blue-glow); }
+.key .k-green { background: var(--green); box-shadow: 0 0 6px var(--green-glow); }
 
 /* ---------- LED readouts ---------- */
 .val {
@@ -177,7 +180,7 @@ button { font: inherit; color: inherit; }
   color: var(--ink);
 }
 .red { color: var(--red); text-shadow: 0 0 .32em var(--red-glow); }
-.blue { color: var(--blue); text-shadow: 0 0 .32em var(--blue-glow); }
+.green { color: var(--green); text-shadow: 0 0 .32em var(--green-glow); }
 .amber { color: var(--amber); text-shadow: 0 0 .32em var(--amber-glow); }
 .ink { color: var(--ink); text-shadow: none; }
 
@@ -193,14 +196,18 @@ button { font: inherit; color: inherit; }
 }
 .led-window {
   display: block; position: relative;
-  padding: clamp(16px, 2.6vw, 30px) clamp(12px, 2.2vw, 30px);
+  padding: clamp(6px, 1vw, 12px) clamp(10px, 1.6vw, 20px);
   border: 1px solid var(--rule-hi);
   background-color: var(--board);
-  background-image: radial-gradient(circle at center, var(--dot) 0 1.1px, transparent 1.7px);
-  background-size: 7px 7px;
-  box-shadow: inset 0 0 48px var(--shade);
+  box-shadow: inset 0 0 36px var(--shade);
 }
-.hero-num { font-size: 104px; line-height: 1; }
+/* The big number sits on a board of unlit lamps: one per 0.1em, the dot pitch of the ticker font, so each
+   lit dot lands on a lamp (the font puts every dot on that grid from the top of the line). */
+.hero-num {
+  font-size: 104px; line-height: 1; letter-spacing: 0;
+  background-image: radial-gradient(circle at center, var(--unlit) 0 .04em, transparent .046em);
+  background-size: .1em .1em; background-position: 0 0;
+}
 .hero-note { margin: 0; color: var(--label); font-size: 15.5px; }
 
 /* ---------- boards of placards ---------- */
@@ -252,7 +259,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 600px; }
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
 .legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
 .legend .l-red { background: var(--red); }
-.legend .l-blue { background: var(--blue); }
+.legend .l-green { background: var(--green); }
 #chart { width: 100%; }
 #chart svg { display: block; overflow: visible; }
 .c-grid { stroke: var(--rule); stroke-width: 1; shape-rendering: crispEdges; }
@@ -260,7 +267,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 600px; }
 .c-tick { fill: var(--label); font: 500 12px var(--font-label); }
 .c-tick.sel { fill: var(--amber); font-weight: 700; }
 .c-bar.pos { fill: var(--red); }
-.c-bar.neg { fill: var(--blue); }
+.c-bar.neg { fill: var(--green); }
 .c-sel { fill: var(--wash); }
 .c-hit { fill: transparent; cursor: pointer; }
 .c-hit:focus { outline: none; }
@@ -397,7 +404,7 @@ dialog.info::backdrop { background: var(--scrim); }
       </div>
       <div class="key" aria-label="Color key">
         <span><i class="k-red"></i>Red: the alternative did better</span>
-        <span><i class="k-blue"></i>Blue, negative: BND did better</span>
+        <span><i class="k-green"></i>Green, negative: BND did better</span>
       </div>
       <p class="fee-line" id="feeLine">All returns are after fees.</p>
       <p class="fee-line" id="vooNote" hidden>* VOO launched on Sept 7, 2010. S&amp;P 500 figures that reach back before October 2010 use SPY, which tracks the same index, for June 2007 to September 2010.</p>
@@ -490,7 +497,7 @@ dialog.info::backdrop { background: var(--scrim); }
     <div class="chart-box">
       <div class="chart-top">
         <h3 class="chart-title" id="chartTitle">Opportunity cost to all BND holders, by year</h3>
-        <div class="legend"><span><i class="l-red"></i>Cost: the alternative did better</span><span><i class="l-blue"></i>BND did better</span></div>
+        <div class="legend"><span><i class="l-red"></i>Cost: the alternative did better</span><span><i class="l-green"></i>BND did better</span></div>
       </div>
       <div id="chart"></div>
       <div class="tip" id="tip" hidden></div>
@@ -794,10 +801,10 @@ var BNDClock = (function () {
     return (x > 0 ? '+' : MINUS) + v + '%';
   }
   function signed(x, d) { var v = Math.abs(x).toFixed(d); return (+v === 0 ? '' : x > 0 ? '+' : MINUS) + v; }
-  function tone(x) { return x > 0 ? 'red' : x < 0 ? 'blue' : 'ink'; }
+  function tone(x) { return x > 0 ? 'red' : x < 0 ? 'green' : 'ink'; }
   function setTone(el, cls) {
     if (!el || el._tone === cls) return;
-    el.classList.remove('red', 'blue', 'amber', 'ink');
+    el.classList.remove('red', 'green', 'amber', 'ink');
     el.classList.add(cls);
     el._tone = cls;
   }
