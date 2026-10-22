@@ -303,7 +303,7 @@ dialog.info::backdrop { background: var(--scrim); }
           <button type="button" class="chip" role="radio" data-alt="VTI">US stocks <small>VTI</small></button>
           <button type="button" class="chip" role="radio" data-alt="VOO">S&amp;P 500 <small>VOO</small></button>
           <button type="button" class="chip" role="radio" data-alt="NVDA">Nvidia <small>NVDA</small></button>
-          <button type="button" class="chip" role="radio" data-alt="TIPS">TIPS <small>NO FEE</small></button>
+          <button type="button" class="chip" role="radio" data-alt="TIPS">TIPS <small>10-YR</small></button>
           <button type="button" class="chip" role="radio" data-alt="TBILL">T-bills <small>3-MO</small></button>
           <button type="button" class="chip" role="radio" data-alt="CPI">Inflation <small>CPI</small></button>
         </div>
@@ -467,7 +467,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <div class="fld"><label for="myStart">Invested at the start of</label><select id="myStart"></select></div>
       <div class="fld"><label for="myMonthly">Added each month ($)</label><input id="myMonthly" type="number" inputmode="decimal" min="0" step="any" value="0"></div>
       <div class="fld"><label for="myAlt">Compare with</label>
-        <select id="myAlt"><option value="VTI">US stocks (VTI)</option><option value="VOO">S&amp;P 500 (VOO)</option><option value="NVDA">Nvidia (NVDA)</option><option value="TIPS">TIPS, no fee</option><option value="TBILL">3-month T-bills</option><option value="CPI">Inflation (CPI)</option></select></div>
+        <select id="myAlt"><option value="VTI">US stocks (VTI)</option><option value="VOO">S&amp;P 500 (VOO)</option><option value="NVDA">Nvidia (NVDA)</option><option value="TIPS">10-year TIPS (TreasuryDirect)</option><option value="TBILL">3-month T-bills</option><option value="CPI">Inflation (CPI)</option></select></div>
     </form>
     <p class="example-note" id="myExample">Showing an example: $10,000 put into BND at the start of January 2021. Enter your own figures above.</p>
     <div class="board cols-5">
@@ -652,7 +652,7 @@ var BNDClock = (function () {
     VTI: { tick: 'VTI', long: 'US stocks (VTI)', vs: 'US stocks (VTI)', inA: 'in VTI' },
     VOO: { tick: 'VOO', long: 'the S&P 500 (VOO)', vs: 'the S&P 500 (VOO)', inA: 'in VOO' },
     NVDA: { tick: 'NVDA', long: 'Nvidia stock (NVDA)', vs: 'Nvidia (NVDA)', inA: 'in Nvidia' },
-    TIPS: { tick: 'TIPS', long: 'inflation-protected Treasuries (TIPS) bought at TreasuryDirect', vs: 'TIPS bought at TreasuryDirect', inA: 'in TIPS' },
+    TIPS: { tick: 'TIPS', long: '10-year TIPS bought at TreasuryDirect', vs: '10-year TIPS bought at TreasuryDirect', inA: 'in 10-year TIPS' },
     TBILL: { tick: 'T-bills', long: '3-month T-bills', vs: '3-month T-bills', inA: 'in 3-month T-bills' },
     CPI: { tick: 'CPI', long: 'inflation (CPI)', vs: 'inflation (CPI)', inA: 'growing with inflation' }
   };
@@ -897,7 +897,7 @@ var BNDClock = (function () {
       var pr = F.price / D.bndStartClose - 1, tr = E.tenKAt('VTI', B(), 'si', D.asOfMs).b / 10000 - 1;
       setText('mTotal', 'A fund’s share price leaves out the income it pays out. BND’s price went from ' + usd(D.bndStartClose, true) + ' at the end of May 2007 to ' + usd(F.price, true) + ' on ' + ASOF + ', a change of ' + pct(pr) + '. With its monthly distributions reinvested, the same shares returned ' + pct(tr) + '. Every return on this page is a total return like that: distributions and dividends reinvested for BND, VTI, VOO and Nvidia, and interest for TIPS and T-bills.');
     })();
-    setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI, VOO and Nvidia (NVDA), and the consumer price index for inflation. TIPS are the whole market of inflation-protected Treasuries: the iShares TIPS Bond ETF (TIP), with its 0.18% yearly fee added back, since TIPS bought at TreasuryDirect have no fee. Like BND, they are valued at market prices. The S&P 500 is VOO from October 2010 and SPY, which tracks the same index, from June 2007 to September 2010, before VOO existed. T-bills are 3-month Treasury bills bought with no fees, as at TreasuryDirect, and rolled over: each day earns 1/365 of the latest 3-month Treasury yield. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
+    setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI, VOO and Nvidia (NVDA), and the consumer price index for inflation. TIPS are inflation-protected Treasury bonds bought at TreasuryDirect, which charges no fee: one 10-year TIPS bought at the end of May 2007 (2.5% coupon), held to maturity in May 2017, then rolled into a new 10-year TIPS (0.375% coupon, maturing May 2027), and so on. Their principal rises with inflation (CPI-U, with the official 3-month lag), interest is reinvested, and like BND they are valued every month at market prices from the Treasury’s real yield curve (the 5-year yield for bonds with less than 5 years left). The S&P 500 is VOO from October 2010 and SPY, which tracks the same index, from June 2007 to September 2010, before VOO existed. T-bills are 3-month Treasury bills bought with no fees, as at TreasuryDirect, and rolled over: each day earns 1/365 of the latest 3-month Treasury yield. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
     setText('mAssets', 'BND’s net assets come from Vanguard’s annual reports for each December since 2007 and from Vanguard’s fund page (latest: ' +
       words(F.tna * 1e6) + ' on ' + fmtDate(F.tnaDate) + '), filled in month by month from shares outstanding and the market price. The money at work in a month is the previous month-end’s assets plus half of that month’s new money.');
     setText('mUpdates', 'The data refreshes automatically each weekday evening after the market closes; it currently runs through the ' + ASOF +
