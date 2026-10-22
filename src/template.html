@@ -827,7 +827,8 @@ var BNDClock = (function () {
   function updateTicker(tk, t) {
     var v = tk.v(t), s = tk.fmt(v);
     if (s !== tk.last) {
-      var lenChanged = tk.last === null || s.length !== tk.last.length;
+      // The ticker font's 1 is narrower than other digits, so the width changes with the count of 1s too
+      var lenChanged = tk.last === null || s.length !== tk.last.length || s.split('1').length !== tk.last.split('1').length;
       tk.el.textContent = s;
       tk.last = s;
       if (lenChanged && tk.el.hasAttribute('data-max')) fitPending.push(tk.el);
