@@ -22,7 +22,7 @@ function close(name, a, b, tol = 1e-9) {
 function truthy(name, cond) { checks++; if (!cond) { fails++; console.log('FAIL', name); } }
 
 const BASES = ['1Y', '3Y', '5Y', '10Y', 'SI'];
-const PERIODS = ['si', 'y10', 'peak', 'y5', 'm12', 'ytd'];
+const PERIODS = ['si', 'y10', 'peak', 'y5', 'y3', 'm12', 'ytd'];
 for (const k of Object.keys(X.G)) for (const b of BASES) close(`G ${k} ${b}`, E.G[k][b], X.G[k][b]);
 for (const a of BNDClock.ALTS) {
   for (const p of PERIODS) {
