@@ -4,7 +4,7 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI, VOO and NVDA from Tiingo
+  2. Fetches the latest daily prices and distributions for BND, VTI, VOO, NVDA and TIP from Tiingo
      (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
      (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
      TreasuryDirect), and fund facts from Vanguard (best effort).
@@ -40,14 +40,15 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'VOO', 'NVDA')   # priced from Tiingo / Yahoo
-SERIES = TICKERS + ('TBILL',)           # monthly return series kept in state.json
-ALTS = ('VTI', 'VOO', 'NVDA', 'TBILL', 'CPI')
+TICKERS = ('BND', 'VTI', 'VOO', 'NVDA', 'TIP')   # priced from Tiingo / Yahoo
+SERIES = ('BND', 'VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL')   # monthly return series kept in state.json
+# TIPS = iShares TIPS Bond ETF (TIP) with its fee added back: the TIPS market itself, as bought fee-free at TreasuryDirect
+ALTS = ('VTI', 'VOO', 'NVDA', 'TIPS', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'VOO': (-0.40, 0.40), 'NVDA': (-0.60, 1.00), 'TIP': (-0.15, 0.15)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 
@@ -445,6 +446,13 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     if last_yield < rows['BND'][-2]['date']:   # each day accrues at the yield published before it
         notes.append(f'T-bills this month use the last published 3-month yield ({last_yield})')
     keep_from = (iso_date(asof) - dt.timedelta(days=120)).isoformat()
+    # Fee-free TIPS: TIP's total return plus its expense ratio, accrued day by day
+    tip_fee = state['altFees']['TIP']['er'] / 100
+    factors['TIPS'] = {}
+    for mk in months_new:
+        days = iso_date(asof).day if mk == months_new[-1] else days_in_month(mk)
+        f, close, d = factors['TIP'][mk]
+        factors['TIPS'][mk] = (f * (1 + tip_fee) ** (days / 365.25), close, d)
     state['tbill_daily'] = {d: v for d, v in sorted(tb_daily.items()) if d >= keep_from}
 
     # How the fresh numbers compare with what the page showed for the same month
