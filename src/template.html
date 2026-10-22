@@ -300,7 +300,7 @@ dialog.info::backdrop { background: var(--scrim); }
         <div class="chips" role="radiogroup" aria-labelledby="lblAlt" id="altGroup">
           <button type="button" class="chip" role="radio" data-alt="VTI">US stocks <small>VTI</small></button>
           <button type="button" class="chip" role="radio" data-alt="SPY">S&amp;P 500 <small>SPY</small></button>
-          <button type="button" class="chip" role="radio" data-alt="BIL">T-bills <small>BIL</small></button>
+          <button type="button" class="chip" role="radio" data-alt="TBILL">T-bills <small>3-MO</small></button>
           <button type="button" class="chip" role="radio" data-alt="CPI">Inflation <small>CPI</small></button>
         </div>
       </div>
@@ -461,7 +461,7 @@ dialog.info::backdrop { background: var(--scrim); }
       <div class="fld"><label for="myStart">Invested at the start of</label><select id="myStart"></select></div>
       <div class="fld"><label for="myMonthly">Added each month ($)</label><input id="myMonthly" type="number" inputmode="decimal" min="0" step="any" value="0"></div>
       <div class="fld"><label for="myAlt">Compare with</label>
-        <select id="myAlt"><option value="VTI">US stocks (VTI)</option><option value="SPY">S&amp;P 500 (SPY)</option><option value="BIL">T-bills (BIL)</option><option value="CPI">Inflation (CPI)</option></select></div>
+        <select id="myAlt"><option value="VTI">US stocks (VTI)</option><option value="SPY">S&amp;P 500 (SPY)</option><option value="TBILL">3-month T-bills</option><option value="CPI">Inflation (CPI)</option></select></div>
     </form>
     <p class="example-note" id="myExample">Showing an example: $10,000 put into BND at the start of January 2021. Enter your own figures above.</p>
     <div class="board cols-5">
@@ -478,7 +478,7 @@ dialog.info::backdrop { background: var(--scrim); }
     <div class="method">
       <div>
         <h3>Monthly returns</h3>
-        <p id="mPrices">Everything starts from monthly total returns since BND's first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and BIL, and the consumer price index for inflation.</p>
+        <p id="mPrices">Everything starts from monthly total returns since BND's first full month, June 2007: market prices with every distribution reinvested for BND, VTI and SPY, 3-month Treasury bills with no fees, and the consumer price index for inflation.</p>
         <h3>Dollars at work</h3>
         <p id="mAssets">BND's net assets come from Vanguard's annual reports for each December since 2007 and from Vanguard's fund page, filled in month by month from shares outstanding and the market price.</p>
         <h3>Opportunity cost</h3>
@@ -491,10 +491,10 @@ dialog.info::backdrop { background: var(--scrim); }
       <div>
         <h3>Sources</h3>
         <ul class="sources">
-          <li><b>Tiingo.</b> Daily closing prices and distributions for BND, VTI, SPY and BIL, refreshed each weekday. <a href="https://www.tiingo.com/" target="_blank" rel="noopener">tiingo.com</a></li>
+          <li><b>Tiingo.</b> Daily closing prices and distributions for BND, VTI and SPY, refreshed each weekday. <a href="https://www.tiingo.com/" target="_blank" rel="noopener">tiingo.com</a></li>
           <li><b>Vanguard, BND fund page.</b> Net assets, SEC yield, portfolio characteristics and unrealized gains; its official returns calibrate the history through September 2026. <a href="https://investor.vanguard.com/investment-products/etfs/profile/bnd" target="_blank" rel="noopener">investor.vanguard.com</a></li>
           <li><b>SEC EDGAR, Vanguard Bond Index Funds annual reports (Form N-CSR).</b> Year-end net assets of BND's ETF share class, 2007 to 2025. <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&amp;CIK=0000794105&amp;type=N-CSR" target="_blank" rel="noopener">sec.gov</a></li>
-          <li><b>U.S. Treasury.</b> Daily par yield curve rates: 3-month and 10-year yields. <a href="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve" target="_blank" rel="noopener">home.treasury.gov</a></li>
+          <li><b>U.S. Treasury.</b> Daily par yield curve rates: 3-month and 10-year yields. The 3-month yield is also the T-bill comparison. <a href="https://home.treasury.gov/resource-center/data-chart-center/interest-rates/TextView?type=daily_treasury_yield_curve" target="_blank" rel="noopener">home.treasury.gov</a></li>
           <li><b>U.S. Bureau of Labor Statistics, CPI-U.</b> U.S. city average, all items, not seasonally adjusted (CUUR0000SA0). October 2025 was never published because of the 2025 shutdown and is interpolated; months not yet published are estimated at the latest 12-month pace. <a href="https://www.bls.gov/cpi/" target="_blank" rel="noopener">bls.gov</a></li>
           <li><b>Yahoo Finance.</b> Monthly price history from June 2007 through October 2026, and backup daily prices. <a href="https://finance.yahoo.com/quote/BND/history/" target="_blank" rel="noopener">finance.yahoo.com</a></li>
         </ul>
@@ -525,7 +525,7 @@ var BNDClock = (function () {
   'use strict';
   var SPYR = 365.25 * 86400;   // seconds in an average year
   var SPM = SPYR / 12;         // seconds in an average month
-  var ALTS = ['VTI', 'SPY', 'BIL', 'CPI'];
+  var ALTS = ['VTI', 'SPY', 'TBILL', 'CPI'];
 
   function ix(y, m) { return (y - 2007) * 12 + (m - 6); }   // month index: 0 = June 2007
   function prod(arr, a, b) { var p = 1; for (var j = a; j < b; j++) p *= arr[j]; return p; }
@@ -591,7 +591,7 @@ var BNDClock = (function () {
       for (var y = 2007; y <= YEAR; y++) {
         var i0 = y === 2007 ? 0 : ix(y, 1), i1 = y === YEAR ? N : ix(y, 12) + 1;
         var r = {};
-        ['BND', a, 'BIL', 'CPI'].forEach(function (k2) { r[k2] = prod(f[k2], i0, i1) - 1; });
+        ['BND', a, 'TBILL', 'CPI'].forEach(function (k2) { r[k2] = prod(f[k2], i0, i1) - 1; });
         rows.push({ year: y, ret: r, oc: sum(gap[a], i0, i1), cum: sum(gap[a], 0, i1), aumEnd: aum[i1],
                     tenKB: 10000 * prod(f.BND, 0, i1), tenKX: 10000 * prod(f[a], 0, i1), partial: y === YEAR });
       }
@@ -600,7 +600,7 @@ var BNDClock = (function () {
     function projYear(a, b, Y) {
       var s = Date.UTC(Y, 0, 1, 5), e = Date.UTC(Y + 1, 0, 1, 5);
       var cumE = ocAt(a, b, 'si', e), cumS = ocAt(a, b, 'si', s), tk = tenKAt(a, b, 'si', e);
-      var r = { BND: G.BND[b], BIL: G.BIL[b], CPI: G.CPI[b] }; r[a] = G[a][b];
+      var r = { BND: G.BND[b], TBILL: G.TBILL[b], CPI: G.CPI[b] }; r[a] = G[a][b];
       return { year: Y, projected: true, ret: r, oc: cumE - cumS, cum: cumE, aumEnd: aumAt(e), tenKB: tk.b, tenKX: tk.x };
     }
 
@@ -641,7 +641,7 @@ var BNDClock = (function () {
   var ALT = {
     VTI: { tick: 'VTI', long: 'US stocks (VTI)', vs: 'US stocks (VTI)', inA: 'in VTI' },
     SPY: { tick: 'SPY', long: 'the S&P 500 (SPY)', vs: 'the S&P 500 (SPY)', inA: 'in SPY' },
-    BIL: { tick: 'BIL', long: 'T-bills (BIL)', vs: 'T-bills (BIL)', inA: 'in T-bills (BIL)' },
+    TBILL: { tick: 'T-bills', long: '3-month T-bills', vs: '3-month T-bills', inA: 'in 3-month T-bills' },
     CPI: { tick: 'CPI', long: 'inflation (CPI)', vs: 'inflation (CPI)', inA: 'growing with inflation' }
   };
   var BASIS = { '1Y': '1-year', '3Y': '3-year', '5Y': '5-year', '10Y': '10-year', 'SI': 'since-2007' };
@@ -679,6 +679,7 @@ var BNDClock = (function () {
   try {
     var saved = JSON.parse(localStorage.getItem('bnd-clock-v1') || 'null');
     if (saved) {
+      if (saved.alt === 'BIL') saved.alt = 'TBILL';   // the T-bill comparison used BIL until Oct 2026
       if (ALT[saved.alt]) state.alt = saved.alt;
       if (BASIS[saved.basis]) state.basis = saved.basis;
       if (saved.my && saved.my.custom && isFinite(saved.my.amount) && saved.my.amount >= 0 &&
@@ -872,7 +873,7 @@ var BNDClock = (function () {
 
     setText('pTM', 'Step through BND’s history. Each year shows the clock as it stood on December 31; ' + YEAR +
       ' runs through ' + ASOF_SHORT + ', and ' + PROJ[0] + ' and ' + PROJ[1] + ' are projections at the pace set above.');
-    setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI, SPY and BIL, and the consumer price index for inflation. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
+    setText('mPrices', 'Everything starts from monthly total returns since BND’s first full month, June 2007: market prices with every distribution reinvested for BND, VTI and SPY, and the consumer price index for inflation. T-bills are 3-month Treasury bills bought with no fees, as at TreasuryDirect, and rolled over: each day earns 1/365 of the latest 3-month Treasury yield. The history through September 2026 comes from Yahoo Finance, with BND and VTI matched to Vanguard’s published quarterly and annual returns. Newer months are built from daily closing prices and distributions from ' + D.priceSource + '.');
     setText('mAssets', 'BND’s net assets come from Vanguard’s annual reports for each December since 2007 and from Vanguard’s fund page (latest: ' +
       words(F.tna * 1e6) + ' on ' + fmtDate(F.tnaDate) + '), filled in month by month from shares outstanding and the market price. The money at work in a month is the previous month-end’s assets plus half of that month’s new money.');
     setText('mUpdates', 'The data refreshes automatically each weekday evening after the market closes; it currently runs through the ' + ASOF +
@@ -993,11 +994,11 @@ var BNDClock = (function () {
     setCell(1, 'Opportunity cost since 2007', usd(r.cum), r.projected ? proj : 'All BND holders vs. ' + AL.tick, tone(r.cum));
     setCell(2, 'Opportunity cost in ' + yl, usd(r.oc), r.projected ? proj : (r.oc >= 0 ? AL.tick + ' did better' : 'BND did better'), tone(r.oc));
     setCell(3, 'BND return in ' + yl, pct(r.ret.BND), r.projected ? 'Assumed annual rate' : (Y === 2007 ? 'From May 31, 2007' : 'Distributions reinvested'), 'amber');
-    setCell(4, (a === 'CPI' ? 'Inflation' : AL.tick + ' return') + ' in ' + yl, pct(r.ret[a]), r.projected ? 'Assumed annual rate' : (a === 'CPI' ? 'CPI-U' : 'Distributions reinvested'), 'amber');
+    setCell(4, (a === 'CPI' ? 'Inflation' : AL.tick + ' return') + ' in ' + yl, pct(r.ret[a]), r.projected ? 'Assumed annual rate' : (a === 'CPI' ? 'CPI-U' : a === 'TBILL' ? 'Interest rolled over, no fees' : 'Distributions reinvested'), 'amber');
     setCell(5, 'BND net assets, ' + asOf, compact(r.aumEnd), r.projected ? 'Assumes the recent pace of new money' : (Y === YEAR ? 'Estimate' : 'Vanguard annual report'), 'amber');
     setCell(6, '$10,000 from May 2007, in BND', usd(r.tenKB), pct(r.tenKB / 10000 - 1) + ' total', 'ink');
     setCell(7, '$10,000 from May 2007, ' + (a === 'CPI' ? 'kept up with inflation' : AL.inA), usd(r.tenKX), pct(r.tenKX / 10000 - 1) + ' total', 'ink');
-    if (a === 'CPI') setCell(8, 'T-bills (BIL) in ' + yl, pct(r.ret.BIL), r.projected ? 'Assumed annual rate' : 'SPDR 1-3 Month T-Bill ETF', 'amber');
+    if (a === 'CPI') setCell(8, 'T-bills in ' + yl, pct(r.ret.TBILL), r.projected ? 'Assumed annual rate' : '3-month bills, no fees', 'amber');
     else setCell(8, 'Inflation in ' + yl, pct(r.ret.CPI), r.projected ? 'Assumed annual rate' : 'CPI-U', 'amber');
     var btns = document.querySelectorAll('#yearGroup .chip');
     for (var i = 0; i < btns.length; i++) {
@@ -1144,7 +1145,7 @@ var BNDClock = (function () {
         if (a === 'CPI') paras.push('How far BND’s returns fell short of inflation, in dollars of buying power, adding up every month since June 2007 for all the money in the fund.');
         else paras.push('If, every month since June 2007, the money in BND had been in ' + AL.long + ' instead, its holders would have ended up with this much more.');
         paras.push('Through the ' + ASOF + ' close the total is ' + usd(base) + '. Since then the clock ' + (rate >= 0 ? 'adds ' : 'subtracts ') + usd(Math.abs(rate), Math.abs(rate) < 100) + ' a second. ' + paceText + ', applied to today’s estimated ' + words(aum) + ' of assets.');
-        if (a === 'BIL') paras.push('A single dollar put into BND in 2007 is ' + (tk0.b >= tk0.x ? 'still ahead of' : 'behind') + ' T-bills: $10,000 grew to ' + usd(tk0.b) + ' in BND vs ' + usd(tk0.x) + ' in BIL. The fund-wide total can differ because most of BND’s money arrived after 2020, when T-bills often paid more.');
+        if (a === 'TBILL') paras.push('A single dollar put into BND in 2007 is ' + (tk0.b >= tk0.x ? 'still ahead of' : 'behind') + ' T-bills: $10,000 grew to ' + usd(tk0.b) + ' in BND vs ' + usd(tk0.x) + ' in 3-month T-bills. The fund-wide total can differ because most of BND’s money arrived after 2020, when T-bills often paid more.');
         else if (a === 'CPI') paras.push('$10,000 put into BND in 2007 ' + (tk0.b >= tk0.x ? 'stayed ahead of' : 'fell behind') + ' inflation (' + usd(tk0.b) + ' vs the ' + usd(tk0.x) + ' needed to keep up). Most of BND’s assets arrived later; the fund-wide total lost buying power in ' + listYears(costYearsSince(2020)) + '.');
         else paras.push('BND did better than ' + AL.tick + ' in ' + listYears(betterYears()) + ', and the total nets those years out. In 2008 alone BND holders came out ' + words(-yearOC(2008)) + ' ahead.');
         return { title: $('heroLabel').textContent, value: usd(total), tone: tone(total), paras: paras,
@@ -1207,7 +1208,7 @@ var BNDClock = (function () {
           formula: 'Net assets × duration (' + F.duration.toFixed(1) + ') × 1%.' };
       case 'tbill':
         return { title: R.tbillLabel, value: R.tbill.toFixed(2) + '%', tone: 'amber',
-          paras: [R.tbill.toFixed(2) + '% on ' + fmtDate(R.date) + ' (' + R.source + '). Roughly what cash in Treasury bills or a government money market fund earns now. T-bills (BIL) returned ' + pct(E.G.BIL['1Y'], 2) + ' over the 12 months to ' + LASTFULL + ', vs ' + pct(E.G.BND['1Y'], 2) + ' for BND.'] };
+          paras: [R.tbill.toFixed(2) + '% on ' + fmtDate(R.date) + ' (' + R.source + '). Roughly what cash in Treasury bills or a government money market fund earns now. Fee-free 3-month T-bills returned ' + pct(E.G.TBILL['1Y'], 2) + ' over the 12 months to ' + LASTFULL + ', vs ' + pct(E.G.BND['1Y'], 2) + ' for BND.'] };
       case 't10':
         return { title: '10-year Treasury yield', value: R.ust10.toFixed(2) + '%', tone: 'amber',
           paras: [R.ust10.toFixed(2) + '% on ' + fmtDate(R.date) + ' (' + R.source + '). When yields rise, existing bonds lose value; BND’s price is ' + (priceYtd < 0 ? 'down ' : 'up ') + Math.abs(priceYtd * 100).toFixed(1) + '% in ' + YEAR + '.'] };
@@ -1216,11 +1217,11 @@ var BNDClock = (function () {
           paras: ['Consumer prices (CPI-U, not seasonally adjusted) rose ' + cpiPct.toFixed(2) + '% in the 12 months to ' + monLong(D.cpi.month) + ', the latest Bureau of Labor Statistics reading. Over the 5 years to ' + LASTFULL + ' prices rose about ' + pct(Math.pow(1 + E.G.CPI['5Y'], 5) - 1) + ' in total.'] };
       case 'spreadT': {
         var sp = F.secYield - R.tbill;
-        var wins = ['1Y', '3Y', '5Y', '10Y'].filter(function (w) { return E.G.BIL[w] > E.G.BND[w]; }).map(function (w) { return w.replace('Y', ''); });
+        var wins = ['1Y', '3Y', '5Y', '10Y'].filter(function (w) { return E.G.TBILL[w] > E.G.BND[w]; }).map(function (w) { return w.replace('Y', ''); });
         var back = wins.length ? 'Looking back, T-bills beat BND over the last ' + listYears(wins) + (wins.length === 1 && wins[0] === '1' ? ' year' : ' years') + ' (to ' + LASTFULL + ').' : 'Looking back, BND beat T-bills over the last 1, 3, 5 and 10 years (to ' + LASTFULL + ').';
         return { title: 'BND yield over T-bills', value: signed(sp, 2) + ' pts', tone: 'amber',
           paras: ['BND’s ' + F.secYield.toFixed(2) + '% SEC yield is ' + Math.abs(sp).toFixed(2) + ' percentage points ' + (sp >= 0 ? 'above' : 'below') + ' the ' + R.tbill.toFixed(2) + '% ' + R.tbillLabel.replace(' yield', '') + ' yield. Looking ahead, that is ' + (sp >= 0 ? 'the extra income BND offers for taking on interest-rate risk.' : 'how much less income BND offers than cash right now.'),
-            back + ' Since 2007, BND is ' + (E.G.BND.SI >= E.G.BIL.SI ? 'ahead' : 'behind') + ': ' + pct(E.G.BND.SI, 2) + ' a year vs ' + pct(E.G.BIL.SI, 2) + '.'] };
+            back + ' Since 2007, BND is ' + (E.G.BND.SI >= E.G.TBILL.SI ? 'ahead' : 'behind') + ': ' + pct(E.G.BND.SI, 2) + ' a year vs ' + pct(E.G.TBILL.SI, 2) + '.'] };
       }
       case 'spreadCPI': {
         var sc = F.secYield - cpiPct;

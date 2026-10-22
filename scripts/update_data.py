@@ -4,9 +4,10 @@
 Each run:
   1. Loads data/state.json, the clock's running record: monthly total returns since June 2007,
      BND's net-asset anchors, CPI levels, fund facts, distributions and the 2020 peak.
-  2. Fetches the latest daily prices and distributions for BND, VTI, SPY and BIL from Tiingo
-     (falling back to Yahoo Finance), CPI from the BLS, Treasury yields from the U.S. Treasury,
-     and fund facts from Vanguard (best effort; Vanguard often blocks automated requests).
+  2. Fetches the latest daily prices and distributions for BND, VTI and SPY from Tiingo
+     (falling back to Yahoo Finance), CPI from the BLS, daily Treasury yields from the U.S. Treasury
+     (the 3-month yield also drives the T-bill comparison: fee-free bills, as bought at
+     TreasuryDirect), and fund facts from Vanguard (best effort).
   3. Turns completed months into permanent monthly returns, recomputes the current month so
      far, and updates the 2020-peak, 52-week and distribution figures.
   4. Writes data/clock-data.json (embedded in the page), data/check.json (values the page's
@@ -39,13 +40,14 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'data'
 ET = ZoneInfo('America/New_York')
-TICKERS = ('BND', 'VTI', 'SPY', 'BIL')
-ALTS = ('VTI', 'SPY', 'BIL', 'CPI')
+TICKERS = ('BND', 'VTI', 'SPY')        # ETFs priced from Tiingo / Yahoo
+SERIES = TICKERS + ('TBILL',)           # monthly return series kept in state.json
+ALTS = ('VTI', 'SPY', 'TBILL', 'CPI')
 START = '2007-06'            # first month of returns (BND began trading Apr 10, 2007)
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 # A single month's total return outside these bounds is treated as bad data, not news.
-BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'SPY': (-0.40, 0.40), 'BIL': (-0.01, 0.02)}
+BOUNDS = {'BND': (-0.12, 0.12), 'VTI': (-0.40, 0.40), 'SPY': (-0.40, 0.40)}
 SPYR = 365.25 * 86400        # seconds in an average year
 
 
@@ -234,19 +236,47 @@ def fetch_cpi() -> dict[str, float]:
 
 
 def fetch_treasury(today: dt.date) -> dict:
-    for year in (today.year, today.year - 1):
+    """Daily par yields from the U.S. Treasury for last year and this year.
+
+    Returns {'rates': latest 3-month and 10-year yields, 'daily': {date: 3-month yield, %}}."""
+    daily, latest = {}, None
+    for year in (today.year - 1, today.year):
         url = ('https://home.treasury.gov/resource-center/data-chart-center/interest-rates/'
                f'daily-treasury-rates.csv/{year}/all?type=daily_treasury_yield_curve'
                f'&field_tdr_date_value={year}&page&_format=csv')
         text = http_get(url, {'Accept': 'text/csv'}).decode('utf-8-sig')
-        rows = [r for r in csv.DictReader(io.StringIO(text)) if r.get('Date')]
-        if not rows:
-            continue
-        best = max(rows, key=lambda r: dt.datetime.strptime(r['Date'], '%m/%d/%Y'))
-        d = dt.datetime.strptime(best['Date'], '%m/%d/%Y').date()
-        return {'tbill': float(best['3 Mo']), 'tbillLabel': '3-month Treasury yield', 'ust10': float(best['10 Yr']),
-                'date': d.isoformat(), 'source': 'U.S. Treasury daily par yield curve'}
-    raise RuntimeError('Treasury: no rows')
+        for r in csv.DictReader(io.StringIO(text)):
+            if not r.get('Date') or not (r.get('3 Mo') or '').strip():
+                continue
+            d = dt.datetime.strptime(r['Date'], '%m/%d/%Y').date().isoformat()
+            daily[d] = float(r['3 Mo'])
+            if latest is None or d > latest[0]:
+                latest = (d, r)
+    if latest is None:
+        raise RuntimeError('Treasury: no rows')
+    d, best = latest
+    return {'rates': {'tbill': float(best['3 Mo']), 'tbillLabel': '3-month Treasury yield', 'ust10': float(best['10 Yr']),
+                      'date': d, 'source': 'U.S. Treasury daily par yield curve'},
+            'daily': daily}
+
+
+def tbill_factor(daily: dict, first: dt.date, last: dt.date) -> float:
+    """Growth of money in 3-month T-bills from the start of `first` to the end of `last` (calendar days).
+
+    Each day earns 1/365 of the latest 3-month yield published before that day. No fees: the rate
+    a buyer gets at TreasuryDirect, rolled over continuously."""
+    dates = sorted(daily)
+    f, d, i, y = 1.0, first, 0, None
+    while d <= last:
+        iso = d.isoformat()
+        while i < len(dates) and dates[i] < iso:
+            y = daily[dates[i]]
+            i += 1
+        if y is None:
+            raise RuntimeError(f'no 3-month Treasury yield before {iso}')
+        f *= 1 + y / 100 / 365
+        d += dt.timedelta(days=1)
+    return f
 
 
 def parse_money_millions(text: str) -> float:
@@ -388,6 +418,29 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             if not lo < r < hi:
                 raise RuntimeError(f'{t} return for {mk} looks wrong ({r:+.2%}); not updating')
 
+    # 3-month T-bills: from the Treasury's daily yields (kept in state so a Treasury outage only delays)
+    tb_daily = dict(state.get('tbill_daily', {}))
+    try:
+        tr = fetch_treasury(now_et.date())
+        tb_daily.update(tr['daily'])
+        if tr['rates']['date'] >= state['rates'].get('date', ''):
+            state['rates'] = tr['rates']
+        srcs['treasury'] = {'ok': True, 'through': tr['rates']['date']}
+    except Exception as e:
+        srcs['treasury'] = {'ok': False, 'error': str(e)[:200], 'through': max(tb_daily, default=None)}
+        notes.append('Treasury yields not refreshed: ' + str(e)[:200])
+    last_yield = max(tb_daily, default='')
+    factors['TBILL'] = {}
+    for mk in months_new:
+        if mk != months_new[-1] and last_yield < factors['BND'][mk][2]:
+            raise RuntimeError(f'3-month Treasury yields for {mk} are not available yet; not finalizing the month')
+        end = iso_date(asof) if mk == months_new[-1] else month_last_day(mk)
+        factors['TBILL'][mk] = (tbill_factor(tb_daily, iso_date(mk + '-01'), end), None, end.isoformat())
+    if last_yield < rows['BND'][-2]['date']:   # each day accrues at the yield published before it
+        notes.append(f'T-bills this month use the last published 3-month yield ({last_yield})')
+    keep_from = (iso_date(asof) - dt.timedelta(days=120)).isoformat()
+    state['tbill_daily'] = {d: v for d, v in sorted(tb_daily.items()) if d >= keep_from}
+
     # How the fresh numbers compare with what the page showed for the same month
     prov = state['provisional']
     if prov['month'] in factors['BND']:
@@ -395,20 +448,20 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
             'month': prov['month'],
             'previousThrough': prov['asOf'],
             'newThrough': factors['BND'][prov['month']][2],
-            'changePct': {t: round((factors[t][prov['month']][0] - 1) * 100 - prov[t] / 1e4, 4) + 0.0 for t in TICKERS},  # + 0.0: no "-0.0"
+            'changePct': {t: round((factors[t][prov['month']][0] - 1) * 100 - prov[t] / 1e4, 4) + 0.0 for t in SERIES},  # + 0.0: no "-0.0"
         }
 
     update_peak(state, rows['BND'], bases['BND'])   # before months are finalized (uses the old base)
 
     finalized = []
     for mk in months_new[:-1]:
-        for t in TICKERS:
+        for t in SERIES:
             state['returns'][t].append(ppm(factors[t][mk][0]))
         state['bnd_close']['values'].append(factors['BND'][mk][1])
         state['returns']['final_through'] = mk
         finalized.append(mk)
     cur = months_new[-1]
-    state['provisional'] = {'month': cur, 'asOf': asof, **{t: ppm(factors[t][cur][0]) for t in TICKERS},
+    state['provisional'] = {'month': cur, 'asOf': asof, **{t: ppm(factors[t][cur][0]) for t in SERIES},
                             'bndClose': factors['BND'][cur][1]}
     status['finalizedThisRun'] = finalized
 
@@ -433,15 +486,6 @@ def refresh(state: dict, status: dict, now_utc: dt.datetime) -> None:
     except Exception as e:
         srcs['cpi'] = {'ok': False, 'error': str(e)[:200], 'through': max(state['cpi'])}
         notes.append('CPI not refreshed: ' + str(e)[:200])
-
-    try:
-        rates = fetch_treasury(now_et.date())
-        if rates['date'] >= state['rates'].get('date', ''):
-            state['rates'] = rates
-        srcs['treasury'] = {'ok': True, 'through': rates['date']}
-    except Exception as e:
-        srcs['treasury'] = {'ok': False, 'error': str(e)[:200], 'through': state['rates'].get('date')}
-        notes.append('Treasury yields not refreshed: ' + str(e)[:200])
 
     vg, vg_errors = fetch_vanguard()
     if vg:
@@ -505,8 +549,8 @@ def build_page_data(state: dict) -> dict:
     months = [add_months(START, i) for i in range(month_diff(START, cur) + 1)]
     n = len(months)
     all_months = [add_months(START, -1)] + months
-    r = {t: list(state['returns'][t]) + [prov[t]] for t in TICKERS}
-    for t in TICKERS:
+    r = {t: list(state['returns'][t]) + [prov[t]] for t in SERIES}
+    for t in SERIES:
         if len(r[t]) != n:
             raise RuntimeError(f'{t} has {len(r[t])} months, expected {n}')
 

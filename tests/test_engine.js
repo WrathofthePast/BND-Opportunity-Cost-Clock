@@ -58,12 +58,12 @@ truthy('counters do not run backwards before the data date', E.ocAt('VTI', '10Y'
 const ye = Date.UTC(E.YEAR + 1, 0, 1, 5);
 close('this-year counters stop at year end', E.ocAt('VTI', '10Y', 'ytd', ye + 30 * day), E.ocAt('VTI', '10Y', 'ytd', ye), 1e-12);
 close('income stops at year end', E.incomeAt(ye + 30 * day), E.incomeAt(ye), 1e-12);
-const p = E.personal(10000, BNDClock.ix(2021, 1), 100, 'BIL');
+const p = E.personal(10000, BNDClock.ix(2021, 1), 100, 'TBILL');
 truthy('personal clock adds monthly contributions', p.put === 10000 + 100 * (E.N - BNDClock.ix(2021, 1) - 1));
 const proj = E.projYear('VTI', '10Y', E.YEAR + 1);
 truthy('projection is finite', Number.isFinite(proj.cum) && Number.isFinite(proj.oc) && Number.isFinite(proj.aumEnd));
 for (const key of ['asOf', 'asOfMs', 'n', 'ytdIdx', 'peakIdx']) truthy(`data has ${key}`, D[key] !== undefined && D[key] !== null);
-truthy('series lengths line up', ['BND', 'VTI', 'SPY', 'BIL', 'CPI'].every(k => D.r[k].length === D.n) && D.aum.length === D.n + 1 && D.shares.length === D.n + 1);
+truthy('series lengths line up', ['BND', 'VTI', 'SPY', 'TBILL', 'CPI'].every(k => D.r[k].length === D.n) && D.aum.length === D.n + 1 && D.shares.length === D.n + 1);
 
 console.log(`${checks - fails}/${checks} checks passed (data through ${D.asOf}, ${D.n} months)`);
 process.exit(fails ? 1 : 0);
