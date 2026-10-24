@@ -1,7 +1,9 @@
 {
  "asOf": "2026-10-23",
- "dataUpdated": "2026-10-23T22:41:43+00:00",
- "warnings": [],
+ "dataUpdated": "2026-10-24T15:55:41+00:00",
+ "warnings": [
+  "CPI not refreshed: HTTP Error 503: Service Unavailable"
+ ],
  "sources": {
   "prices": {
    "ok": true,
@@ -9,7 +11,8 @@
    "through": "2026-10-23"
   },
   "cpi": {
-   "ok": true,
+   "ok": false,
+   "error": "HTTP Error 503: Service Unavailable",
    "through": "2026-09",
    "withKey": true
   },
