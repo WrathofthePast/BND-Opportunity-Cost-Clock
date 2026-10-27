@@ -1,6 +1,6 @@
 {
  "asOf": "2026-10-26",
- "dataUpdated": "2026-10-27T02:17:09+00:00",
+ "dataUpdated": "2026-10-27T17:59:31+00:00",
  "warnings": [],
  "sources": {
   "prices": {
@@ -45,16 +45,16 @@
  "finalizedThisRun": [],
  "checks": {
   "month": "2026-10",
-  "previousThrough": "2026-10-23",
+  "previousThrough": "2026-10-26",
   "newThrough": "2026-10-26",
   "changePct": {
-   "BND": 0.1002,
-   "VTI": 0.6894,
-   "VOO": 0.6891,
-   "VXUS": 0.1177,
-   "NVDA": 2.2068,
-   "TIPS": 0.032,
-   "TBILL": 0.0348
+   "BND": 0.0,
+   "VTI": 0.0,
+   "VOO": 0.0,
+   "VXUS": 0.0,
+   "NVDA": 0.0,
+   "TIPS": 0.0,
+   "TBILL": 0.0
   }
  }
 }
