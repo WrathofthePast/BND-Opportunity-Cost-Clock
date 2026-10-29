@@ -45,16 +45,16 @@
  "finalizedThisRun": [],
  "checks": {
   "month": "2026-10",
-  "previousThrough": "2026-10-27",
+  "previousThrough": "2026-10-28",
   "newThrough": "2026-10-28",
   "changePct": {
-   "BND": -0.1717,
-   "VTI": 0.334,
-   "VOO": 0.3395,
-   "VXUS": 0.5297,
-   "NVDA": -1.121,
-   "TIPS": 0.0226,
-   "TBILL": 0.0116
+   "BND": 0.0,
+   "VTI": 0.0,
+   "VOO": 0.0,
+   "VXUS": 0.0,
+   "NVDA": 0.0,
+   "TIPS": 0.0,
+   "TBILL": 0.0
   }
  }
 }
