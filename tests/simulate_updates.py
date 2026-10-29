@@ -136,6 +136,9 @@ def main():
         w = Path(tmp)
         for sub in ('data', 'src', 'scripts', 'tests'):
             shutil.copytree(ROOT / sub, w / sub)
+        # The scenarios below are dated October 2026 onward, so they start from a frozen copy of the data
+        # as it stood on Oct 22, 2026 rather than today's data, which moves past those dates.
+        shutil.copy(ROOT / 'tests' / 'fixtures' / 'state.json', w / 'data' / 'state.json')
         n0 = json.loads((w / 'data' / 'state.json').read_text())
         months0 = len(n0['returns']['BND'])
 
