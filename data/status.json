@@ -1,12 +1,12 @@
 {
- "asOf": "2026-10-29",
- "dataUpdated": "2026-10-30T17:59:45+00:00",
+ "asOf": "2026-10-30",
+ "dataUpdated": "2026-10-31T02:37:29+00:00",
  "warnings": [],
  "sources": {
   "prices": {
    "ok": true,
    "source": "Tiingo",
-   "through": "2026-10-29"
+   "through": "2026-10-30"
   },
   "cpi": {
    "ok": true,
@@ -15,7 +15,7 @@
   },
   "treasury": {
    "ok": true,
-   "through": "2026-10-29"
+   "through": "2026-10-30"
   },
   "vanguard": {
    "ok": true,
@@ -46,15 +46,15 @@
  "checks": {
   "month": "2026-10",
   "previousThrough": "2026-10-29",
-  "newThrough": "2026-10-29",
+  "newThrough": "2026-10-30",
   "changePct": {
-   "BND": 0.0,
-   "VTI": 0.0,
-   "VOO": 0.0,
-   "VXUS": 0.0,
-   "NVDA": 0.0,
-   "TIPS": 0.0,
-   "TBILL": 0.0
+   "BND": 0.2576,
+   "VTI": -1.7822,
+   "VOO": -1.7849,
+   "VXUS": -1.5066,
+   "NVDA": -3.9496,
+   "TIPS": 0.0516,
+   "TBILL": 0.0115
   }
  }
 }
