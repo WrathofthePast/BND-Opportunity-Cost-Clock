@@ -1652,15 +1652,15 @@
  },
  "provisional": {
   "month": "2026-11",
-  "asOf": "2026-11-02",
-  "BND": 375,
-  "VTI": -4225,
-  "VOO": -5023,
-  "VXUS": 2671,
-  "NVDA": -12608,
-  "TIPS": 172,
-  "TBILL": 228,
-  "bndClose": 71.33
+  "asOf": "2026-11-03",
+  "BND": -1449,
+  "VTI": -969,
+  "VOO": -1828,
+  "VXUS": -1457,
+  "NVDA": 10018,
+  "TIPS": 203,
+  "TBILL": 343,
+  "bndClose": 71.2
  },
  "bnd_close": {
   "start": "2007-05",
@@ -2353,8 +2353,8 @@
   "portfolioDate": "2026-09-30",
   "secYield": 5.05,
   "secYieldDate": "2026-10-30",
-  "nav": 71.34,
-  "navDate": "2026-11-02",
+  "nav": 71.17,
+  "navDate": "2026-11-03",
   "unrealizedPct": -9.98,
   "unrealizedPerShare": -7.0,
   "unrealizedDate": "2026-09-30",
@@ -2369,8 +2369,8 @@
  "rates": {
   "tbill": 4.21,
   "tbillLabel": "3-month Treasury yield",
-  "ust10": 4.91,
-  "date": "2026-11-02",
+  "ust10": 4.95,
+  "date": "2026-11-03",
   "source": "U.S. Treasury daily par yield curve"
  },
  "peak": {
@@ -2466,7 +2466,8 @@
   "2026-10-28": 4.18,
   "2026-10-29": 4.18,
   "2026-10-30": 4.16,
-  "2026-11-02": 4.21
+  "2026-11-02": 4.21,
+  "2026-11-03": 4.21
  },
  "altFees": {
   "VTI": {
@@ -3019,6 +3020,12 @@
    2.45,
    2.62,
    2.91
+  ],
+  "2026-11-03": [
+   2.35,
+   2.49,
+   2.65,
+   2.94
   ]
  }
 }
