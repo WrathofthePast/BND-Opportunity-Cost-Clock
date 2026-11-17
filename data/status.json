@@ -1,14 +1,12 @@
 {
- "asOf": "2026-11-13",
- "dataUpdated": "2026-11-14T17:58:38+00:00",
- "warnings": [
-  "Added Vanguard net assets for 2026-10: $167.4 billion"
- ],
+ "asOf": "2026-11-16",
+ "dataUpdated": "2026-11-17T05:10:12+00:00",
+ "warnings": [],
  "sources": {
   "prices": {
    "ok": true,
    "source": "Tiingo",
-   "through": "2026-11-13"
+   "through": "2026-11-16"
   },
   "cpi": {
    "ok": true,
@@ -17,7 +15,7 @@
   },
   "treasury": {
    "ok": true,
-   "through": "2026-11-13"
+   "through": "2026-11-16"
   },
   "vanguard": {
    "ok": true,
@@ -48,15 +46,15 @@
  "checks": {
   "month": "2026-11",
   "previousThrough": "2026-11-13",
-  "newThrough": "2026-11-13",
+  "newThrough": "2026-11-16",
   "changePct": {
-   "BND": 0.0,
-   "VTI": 0.0,
-   "VOO": 0.0,
-   "VXUS": 0.0,
-   "NVDA": 0.0,
-   "TIPS": 0.0,
-   "TBILL": 0.0
+   "BND": 0.0841,
+   "VTI": -1.8328,
+   "VOO": -1.8883,
+   "VXUS": -2.0032,
+   "NVDA": -3.279,
+   "TIPS": 0.0806,
+   "TBILL": 0.0355
   }
  }
 }
