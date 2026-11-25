@@ -1,6 +1,6 @@
 {
  "asOf": "2026-11-24",
- "dataUpdated": "2026-11-25T05:35:03+00:00",
+ "dataUpdated": "2026-11-25T21:39:34+00:00",
  "warnings": [],
  "sources": {
   "prices": {
@@ -15,7 +15,7 @@
   },
   "treasury": {
    "ok": true,
-   "through": "2026-11-24"
+   "through": "2026-11-25"
   },
   "vanguard": {
    "ok": true,

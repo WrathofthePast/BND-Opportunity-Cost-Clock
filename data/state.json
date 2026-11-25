@@ -2357,8 +2357,8 @@
   "ytm": 5.2,
   "bonds": 11403,
   "portfolioDate": "2026-10-31",
-  "secYield": 5.06,
-  "secYieldDate": "2026-11-20",
+  "secYield": 5.03,
+  "secYieldDate": "2026-11-23",
   "nav": 71.34,
   "navDate": "2026-11-24",
   "unrealizedPct": -7.64,
@@ -2373,10 +2373,10 @@
   "rangeBasis": "closing prices"
  },
  "rates": {
-  "tbill": 4.36,
+  "tbill": 4.34,
   "tbillLabel": "3-month Treasury yield",
-  "ust10": 4.91,
-  "date": "2026-11-24",
+  "ust10": 4.85,
+  "date": "2026-11-25",
   "source": "U.S. Treasury daily par yield curve"
  },
  "peak": {
@@ -2472,7 +2472,8 @@
   "2026-11-19": 4.34,
   "2026-11-20": 4.32,
   "2026-11-23": 4.37,
-  "2026-11-24": 4.36
+  "2026-11-24": 4.36,
+  "2026-11-25": 4.34
  },
  "altFees": {
   "VTI": {
@@ -3025,6 +3026,12 @@
    2.67,
    2.79,
    3.05
+  ],
+  "2026-11-25": [
+   2.52,
+   2.61,
+   2.73,
+   2.98
   ]
  }
 }
